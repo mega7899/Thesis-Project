@@ -29,6 +29,10 @@ body {
 }
 
 // Sidebar styles
+.mobile-menu-toggle {
+  display: none;
+}
+
 .sidebar {
   width: $sidebar-width;
   height: 100vh;
@@ -184,6 +188,18 @@ body {
   background: #ffffff;
 }
 
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 720px) {
   body {
     display: block;
@@ -196,6 +212,36 @@ body {
     border-right: 0;
     border-bottom: 2px solid #0b1d55;
     padding: 16px;
+
+    .mobile-menu-toggle {
+      display: flex;
+      width: 44px;
+      height: 44px;
+      padding: 10px 8px;
+      border: 0;
+      background: transparent;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+
+      span {
+        display: block;
+        width: 28px;
+        height: 3px;
+        border-radius: 999px;
+        background: #ffffff;
+      }
+    }
+
+    .category-menu {
+      display: none;
+
+      &.is-open {
+        display: block;
+        animation: slide-down 180ms ease-out;
+      }
+    }
 
     h3 {
       margin: 0 0 12px;
