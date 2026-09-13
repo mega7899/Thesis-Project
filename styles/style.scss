@@ -1,0 +1,151 @@
+// Variables (optional but helpful)
+$sidebar-width: 200px;
+$sidebar-border: 2px solid black;
+$content-margin-left: 230px;
+$stats-border: 1px solid gray;
+$chart-width: 48%;
+$logout-color: red;
+
+// Color Palette
+$bg-aqua:#f0f9ff;
+$sidebar-bg:#ffffff;
+$primary-color:#0284c7;
+$primary-hover:#0369a1;
+$danger-color:#ef4444;
+$danger-hover: #dc2626;
+
+// Global reset and layout
+body { 
+  background-color:#f0f9ff;
+  display: flex;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+// Sidebar styles
+.sidebar {
+  width: $sidebar-width;
+  height: 100vh;
+  border-right: $sidebar-border;
+  padding: 20px  12px;
+  position: fixed;
+  background-color:#001149;
+  color: #f0f9ff;
+  ul {
+    list-style-type: none;
+    padding: 0;
+
+    li {
+      margin-bottom: 10px;
+    }
+  }
+
+  .menu-btn {
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    cursor: pointer;
+    background:rgba (255,255,255,0.1);
+    border-radius:6px;
+    cursor:pointer;
+    font-size: 14px;
+    font-weight:500;
+    color:#475569;
+    transition:all 0.3s ease ;
+
+    &:hover{
+      background-color:#e0f2fe;
+      color:#0284c7;
+      padding-left:22px;
+    }
+  }
+
+  .logout-btn {
+    color: $logout-color;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-radius:8px;
+    font-weight: 600;
+    transition:all 0.3s ease ;
+
+    &:hover{
+      background-color:#e0f2fe;
+      padding-left:22px;
+    }
+  }
+}
+
+.view {
+  .send {
+    background-color:$primary-color;
+    color: white;
+    border: 1px solid $primary-color;
+    border-radius: 6px;
+    margin-top: 10px;
+    padding: 10px 18px;
+    font-weight:500;
+    cursor:pointer;
+    transition: background 0.2 ease;
+
+    &:hover{
+      background-color: $primary-color;
+      border-color: $primary-color;
+    }
+  }
+
+
+  .send:hover {
+    background-color: hsl(0, 59%, 42%);
+    color: rgb(207, 180, 180);
+    border: 1px solid hsl(0, 56%, 43%);
+  }
+
+  .reminderStep{
+    border: 1px solid black;
+    border-radius: 10px;
+    text-align: center;
+    margin: 10vh 20%;
+  }
+
+  .submitionBtn{
+    font-size: 50%;
+    text-align: center;
+    margin: 8vh 20%;
+  }
+}
+
+// Content area
+.content-area {
+  margin-left: $content-margin-left;
+  padding: 20px;
+  width: 100%;
+}
+
+// Stats box (previously inline style)
+.stats-box {
+  border: $stats-border;
+  padding: 10px;
+  display: inline-block;
+}
+
+// Chart containers
+.chart-container {
+  width: $chart-width;
+  display: inline-block;
+  vertical-align: top;
+}
+
+// Table style (optional)
+table,
+th,
+td,
+tr {
+  margin: 0 auto;
+  padding: 5px;
+  border: 1px solid black;
+  width: 50%;
+}
