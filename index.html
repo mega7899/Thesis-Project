@@ -32,12 +32,22 @@
         <div class="stats-box">
           <b>Total Students:</b> 6969 | <b>Avg. Attendees:</b> 6969
         </div>
-        <br /><br />
-        <div class="chart-container">
-          <canvas id="lineChart"></canvas>
-        </div>
-        <div class="chart-container">
-          <canvas id="barChart"></canvas>
+        <section class="reminderStep dashboard-guide" aria-labelledby="dashboard-guide-title">
+          <h2 id="dashboard-guide-title">Quick start guide</h2>
+          <ol>
+            <li>Add the masterlist spreadsheet first.</li>
+            <li>Add the Zoom screenshot.</li>
+            <li>Always upload the spreadsheet before the screenshot.</li>
+          </ol>
+        </section>
+
+        <div class="charts-grid">
+          <div class="chart-container">
+            <canvas id="lineChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="barChart"></canvas>
+          </div>
         </div>
       </section>
 
@@ -58,15 +68,6 @@
           <button class="send" id="send-screenShots" type="button">Submit</button>
         </form>
 
-        <section class="reminderStep">
-          <h2>Step by Step</h2>
-          <ul>
-            <li>Add The MasterList SpreedSheet First</li>
-            <li>Add The Zoom Screenshot</li>
-            <li>Reminder: You Should Always Add The SpreedSheet First, 
-              Before Adding The Zoom Screenshot. </li>
-          </ul>
-        </section>
       </section>
 
       <section id="logs" class="view" style="display: none">
