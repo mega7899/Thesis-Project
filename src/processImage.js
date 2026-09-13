@@ -63,13 +63,18 @@ function matchOcrNamesWithMasterlist(rawOcrText) {
   const liveAttendanceTableBody = document.getElementById("studentData");
   const targetSectionPattern = masterlistCriteria.sectionPattern;
   const regexNamePattern = masterlistCriteria.studentName.join('|');
-  const searchRegex =  new RegExp(`${regexNamePattern}`, 'g');
+  // 'i' makes the search case-insensitive, so OCR output like "grade10-stem"
+  // still matches a masterlist entry stored as "Grade10-STEM".
+  const searchRegex =  new RegExp(`${regexNamePattern}`, 'gi');
   const identifiedMatches = rawOcrText.match(searchRegex);
 
   console.log(identifiedMatches);
 
   identifiedMatches.forEach(matchedString => {
-    if(matchedString === targetSectionPattern){
+    // The regex above can now find a match regardless of casing, but this
+    // was still comparing with strict ===, which would fail again right
+    // here on any casing difference. Lowercase both sides before comparing.
+    if(targetSectionPattern && matchedString.toLowerCase() === targetSectionPattern.toLowerCase()){
       matchedSectionCodes.push(matchedString);
     }else{
       matchedStudentNames.push(matchedString);
