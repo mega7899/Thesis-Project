@@ -8,9 +8,13 @@
   </head>
   <body>
     <div class="sidebar">
-      <h3>Teacher Menu</h3>
-      <hr />
-      <ul>
+      <button class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="category-menu">
+        Teacher Menu
+      </button>
+      <div class="category-menu" id="category-menu">
+        <h3>Teacher Menu</h3>
+        <hr />
+        <ul>
         <li>
           <button class="menu-btn" data-target="dashboard">Dashboard</button>
         </li>
@@ -20,9 +24,10 @@
         <li>
           <button class="menu-btn" data-target="logs">Attendance Logs</button>
         </li>
-      </ul>
-      <hr />
-      <button class="logout-btn">Logout</button>
+        </ul>
+        <hr />
+        <button class="logout-btn">Logout</button>
+      </div>
     </div>
 
     <div class="content-area">
