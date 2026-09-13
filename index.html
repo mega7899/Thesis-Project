@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance Monitoring System</title>
+    <link rel="shortcut icon" href="/icons.svg" type="image/x-icon" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <h3>Teacher Menu</h3>
+      <hr />
+      <ul>
+        <li>
+          <button class="menu-btn" data-target="dashboard">Dashboard</button>
+        </li>
+        <li>
+          <button class="menu-btn" data-target="upload">Upload files</button>
+        </li>
+        <li>
+          <button class="menu-btn" data-target="logs">Attendance Logs</button>
+        </li>
+      </ul>
+      <hr />
+      <button class="logout-btn">Logout</button>
+    </div>
+
+    <div class="content-area">
+      <section id="dashboard" class="view">
+        <h1>Dashboard</h1>
+        <p>Clock: <span id="clock">00:00:00</span></p>
+        <div class="stats-box">
+          <b>Total Students:</b> 6969 | <b>Avg. Attendees:</b> 6969
+        </div>
+        <br /><br />
+        <div class="chart-container">
+          <canvas id="lineChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <canvas id="barChart"></canvas>
+        </div>
+      </section>
+
+      <section id="upload" class="view" style="display: none">
+        <form class="uploadMasterList">
+          <h1>Upload MasterList</h1>
+          <input type="file" id="masterList" accept=".xlsx" />
+          <br />
+          <button class="send" id="send-btn">Submit</button>
+        </form>
+
+        <br>
+
+        <form class="uploadZoomScreenshot">
+          <h1>Upload Zoom ScreenShots</h1>
+          <input type="file" id="screenShots" accept="image/*" />
+          <br />
+          <button class="send" id="send-screenShots">Submit</button>
+        </form>
+
+        <section class="reminderStep">
+          <h2>Step by Step</h2>
+          <ul>
+            <li>Add The MasterList SpreedSheet First</li>
+            <li>Add The Zoom Screenshot</li>
+            <li>Reminder: You Should Always Add The SpreedSheet First, 
+              Before Adding The Zoom Screenshot. </li>
+          </ul>
+        </section>
+      </section>
+
+      <section id="logs" class="view" style="display: none">
+        <h1>Logs</h1>
+
+        <div class="masterlist">
+          <h3>Masterlist</h3>
+          <table>
+            <tr>
+              <th>Section</th>
+              <th>Name</th>
+            </tr>
+            <tr id="masterData"></tr>
+          </table>
+        <section >
+
+
+        <table id="currentAttendance">
+          <h3>Current Attendance</h3>
+          <tr>
+            <th>Section</th>
+            <th>Name</th>
+            <th>Present</th>
+          </tr>
+          <tr id="studentData"></tr>
+        </table>
+          
+        <h3>Combine Masterlist</h3>
+          <table id="combineData">
+            <tr>
+              <th>Section</th>
+              <th>Name</th>
+              <th>Present</th>
+            </tr>
+            <tr id="combineSheetData"></tr>
+          </table>
+        </section>
+
+        <nav class="submitionBtn">
+          <button id="combineTable">Combine Table</button>
+          <button id="exportTable">Export Table</button>
+        </nav>
+        </div>
+      </section>
+
+      <section id="students" class="view" style="display: none">
+        <h1>Students</h1>
+        <ul>
+          <li>Student 1</li>
+          <li>Student 2</li>
+        </ul>
+      </section>
+    </div>
+
+    <script type="module" src="../src/main.js"></script>
+  </body>
+</html>
