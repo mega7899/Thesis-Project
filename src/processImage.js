@@ -1,5 +1,3 @@
-import { createWorker } from "tesseract.js";
-import { InvertFilter } from "image-filter-js";
 import { getMasterlistData } from "./studentRegister";
 
 //Global Variable
@@ -36,9 +34,8 @@ function prepareImageOnCanvas(fileInputElement) {
 
     imageElement.onload = () => {
       canvasContext.drawImage(imageElement, 0, 0, 1366, 789);
-      const filterInstance = new InvertFilter(processingCanvas);
-      filterInstance.process(processingCanvas);
-      runOcrAnalysis(processingCanvas);
+      applyImageFilterAndRunOcr(processingCanvas);
+
     };
   };
 }
