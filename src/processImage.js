@@ -36,8 +36,8 @@ function prepareImageOnCanvas(fileInputElement) {
 
     imageElement.onload = () => {
       canvasContext.drawImage(imageElement, 0, 0, 1366, 789);
-      let filterInstance = new InvertFilter(processingCanvas);
-      filterInstance.process(imageElement);
+      const filterInstance = new InvertFilter(processingCanvas);
+      filterInstance.process(processingCanvas);
       runOcrAnalysis(processingCanvas);
     };
   };
@@ -58,36 +58,54 @@ function runOcrAnalysis(canvasSource) {
 }
 
 //Working on progress
-function matchOcrNamesWithMasterlist(rawOcrText) { 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchOcrNamesWithMasterlist(rawOcrText) {
   const masterlistCriteria = getMasterlistData();
   const liveAttendanceTableBody = document.getElementById("studentData");
-  const targetSectionPattern = masterlistCriteria.sectionPattern;
-  const regexNamePattern = masterlistCriteria.studentName.join('|');
-  // 'i' makes the search case-insensitive, so OCR output like "grade10-stem"
-  // still matches a masterlist entry stored as "Grade10-STEM".
-  const searchRegex =  new RegExp(`${regexNamePattern}`, 'gi');
-  const identifiedMatches = rawOcrText.match(searchRegex);
+  const masterlistValues = masterlistCriteria.studentName;
+  const masterNames = masterlistValues.filter((_, index) => index % 2 === 0);
+  const masterSections = masterlistValues.filter((_, index) => index % 2 === 1);
 
-  console.log(identifiedMatches);
+  // Escape punctuation such as commas, then test longer names first. This is
+  // important for names like "AREVALO, JHON CRIST G".
+  const regexNamePattern = masterNames
+    .filter(Boolean)
+    .sort((a, b) => String(b).length - String(a).length)
+    .map((name) => escapeRegex(String(name).trim()))
+    .join("|");
 
-  identifiedMatches.forEach(matchedString => {
-    // The regex above can now find a match regardless of casing, but this
-    // was still comparing with strict ===, which would fail again right
-    // here on any casing difference. Lowercase both sides before comparing.
-    if(targetSectionPattern && matchedString.toLowerCase() === targetSectionPattern.toLowerCase()){
-      matchedSectionCodes.push(matchedString);
-    }else{
-      matchedStudentNames.push(matchedString);
+  if (!regexNamePattern) return;
+
+  const searchRegex = new RegExp(`(?<![A-Za-z])(?:${regexNamePattern})(?![A-Za-z])`, "gi");
+  const identifiedMatches = rawOcrText.match(searchRegex) ?? [];
+  const matchedNames = [];
+  const matchedSections = [];
+
+  identifiedMatches.forEach((matchedString) => {
+    const matchedIndex = masterNames.findIndex(
+      (name) => String(name).trim().toLowerCase() === matchedString.trim().toLowerCase()
+    );
+
+    if (matchedIndex !== -1 && !matchedNames.includes(masterNames[matchedIndex])) {
+      matchedNames.push(masterNames[matchedIndex]);
+      matchedSections.push(masterSections[matchedIndex] ?? "");
     }
   });
 
-  for(let i = 0; i < matchedStudentNames.length; i++){
-    const tableRowHtml = `<td>${matchedSectionCodes[i]}</td> <td>${matchedStudentNames[i]}</td><td>Present</td>`;
-    liveAttendanceTableBody.insertAdjacentHTML('afterend', tableRowHtml);
+  matchedStudentNames.push(...matchedNames);
+  matchedSectionCodes.push(...matchedSections);
+
+  for (let i = 0; i < matchedNames.length; i++) {
+    const newRow = document.createElement("tr");
+    newRow.innerHTML = `<td>${matchedSections[i]}</td><td>${matchedNames[i]}</td><td>Present</td>`;
+    liveAttendanceTableBody.insertAdjacentElement("beforebegin", newRow);
   }
 
-  getExtractedStudentNames();
-  console.log("the name formater has finished its function.");
+  console.log("OCR matches:", matchedNames);
+  return getExtractedStudentNames();
 }
 
 export function getExtractedStudentNames(){
