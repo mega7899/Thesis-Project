@@ -1,14 +1,15 @@
 import { createWorker } from "tesseract.js";
 import { InvertFilter } from "image-filter-js";
-import { getMasterlistData } from "./studentRegister";
+import { partial_ratio} from 'fuzzball';
+import { getMasterlistData } from './studentRegister';
 
 //Global Variable
 const screenshotFileInput = document.getElementById("screenShots");
 const submitScreenshotBtn = document.getElementById("send-screenShots");
 const alternativeScreenshotInput = document.getElementById("screenShots");
-const matchedSectionCodes = [];
-const matchedStudentNames = [];
-
+const studentCount = [];
+let rawScannedOcr;
+let ocrNames;
 
 //Run the program, When the button is cliked
 submitScreenshotBtn.addEventListener("click", () => {
@@ -51,49 +52,121 @@ function runOcrAnalysis(canvasSource) {
     const ocrWorker = await createWorker("eng");
     const ocrResult = await ocrWorker.recognize(canvasSource);
     const extractedText = ocrResult.data.text;
-    matchOcrNamesWithMasterlist(extractedText);
+    extractingNames(extractedText);
     await ocrWorker.terminate();
     console.log("the program has stopped.");
   })();
 }
 
-//Working on progress
-function matchOcrNamesWithMasterlist(rawOcrText) { 
-  const masterlistCriteria = getMasterlistData();
-  const liveAttendanceTableBody = document.getElementById("studentData");
-  const targetSectionPattern = masterlistCriteria.sectionPattern;
-  const regexNamePattern = masterlistCriteria.studentName.join('|');
-  // 'i' makes the search case-insensitive, so OCR output like "grade10-stem"
-  // still matches a masterlist entry stored as "Grade10-STEM".
-  const searchRegex =  new RegExp(`${regexNamePattern}`, 'gi');
-  const identifiedMatches = rawOcrText.match(searchRegex);
+function extractingNames(text){
+  const regexPattern = /[A-Z]\d{3,4}[_\s]+[A-Z]/gi;
+  const matchText = [...text.matchAll(regexPattern)];
 
-  console.log(identifiedMatches);
+  if (matchText.length > 0) {
+    const startIndex = matchText[0].index; // First detected ID (e.g., A049)
+    const lastMatchIndex = matchText[matchText.length - 1].index; // Last detected ID
+    
+    const lineEnd = text.indexOf('\n', lastMatchIndex);
+    const endIndex = lineEnd !== -1 ? lineEnd : 'There is no student name with the format match';
 
-  identifiedMatches.forEach(matchedString => {
-    // The regex above can now find a match regardless of casing, but this
-    // was still comparing with strict ===, which would fail again right
-    // here on any casing difference. Lowercase both sides before comparing.
-    if(targetSectionPattern && matchedString.toLowerCase() === targetSectionPattern.toLowerCase()){
-      matchedSectionCodes.push(matchedString);
-    }else{
-      matchedStudentNames.push(matchedString);
-    }
-  });
-
-  for(let i = 0; i < matchedStudentNames.length; i++){
-    const tableRowHtml = `<td>${matchedSectionCodes[i]}</td> <td>${matchedStudentNames[i]}</td><td>Present</td>`;
-    liveAttendanceTableBody.insertAdjacentHTML('afterend', tableRowHtml);
+    const resultBlock = text.slice(startIndex, endIndex);
+    rawScannedOcr = resultBlock;
+    
+    scanStudentName(resultBlock);
   }
-
-  getExtractedStudentNames();
-  console.log("the name formater has finished its function.");
 }
 
-export function getExtractedStudentNames(){
-  const exportedStudentPayload = {
-    student: matchedStudentNames
+function scanStudentName(text) {
+  const studentMasterlist = getMasterlistData();
+  
+  // 1. Reset results array
+  studentCount.length = 0;
+
+  const cleanText = text
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const regPattern = /[a-zA-Z]\d+.[a-zA-Z]+.[a-zA-Z]+/gi;
+  ocrNames = cleanText.match(regPattern) || [];
+
+  // Collect ALL possible candidate pairs with score >= 60
+  const candidates = [];
+
+  for (let i = 0; i < studentMasterlist.length; i++) {
+    const student = studentMasterlist[i];
+
+    for (let n = 0; n < ocrNames.length; n++) {
+      const ocrEntry = ocrNames[n];
+      const score = partial_ratio(ocrEntry, student.name);
+
+      if (score >= 50) {
+        candidates.push({
+          studentIndex: i,
+          ocrIndex: n,
+          student: student,
+          score: score
+        });
+      }
+    }
   }
 
-  return exportedStudentPayload;
+  // Sort pairs by highest confidence first (98% match gets picked over 65%)
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Filter out duplicates using Sets
+  const claimedStudentIndices = new Set();
+  const claimedOcrIndices = new Set();
+
+  for (const candidate of candidates) {
+    // Skip if this student OR this OCR string was already claimed by a better match
+    if (claimedStudentIndices.has(candidate.studentIndex) || claimedOcrIndices.has(candidate.ocrIndex)) {
+      continue;
+    }
+
+    // Lock both indices so they cannot be reused
+    claimedStudentIndices.add(candidate.studentIndex);
+    claimedOcrIndices.add(candidate.ocrIndex);
+
+    // Save final unique match
+    studentCount.push({
+      name: candidate.student.name,
+      sectionCode: candidate.student.sectionCode,
+      score: candidate.score
+    });
+  }
+  renderCombineResult(studentCount);
+  console.log(studentCount);
+}
+
+// New DOM rendering function
+export function renderCombineResult(matchedData) {
+  const currentAttendanceTable = document.getElementById("studentData");
+  if (!currentAttendanceTable) {
+    console.warn("Target element #combineData was not found in the DOM.");
+    return;
+  }
+
+  // Clear existing table rows before appending new results
+  currentAttendanceTable.replaceChildren();
+
+  matchedData.forEach(student => {
+    const studentRow = document.createElement("tr");
+    const sectionCell = document.createElement("td");
+    const nameCell = document.createElement("td");
+    const statusCell = document.createElement("td");
+
+    sectionCell.textContent = student.sectionCode;
+    nameCell.textContent = student.name;
+    statusCell.textContent = `Present`;
+
+    studentRow.append(sectionCell, nameCell, statusCell);
+    currentAttendanceTable.appendChild(studentRow);
+    console.log(studentCount);
+  });
+}
+
+export function catchStudenName() {
+  return studentCount;
 }
