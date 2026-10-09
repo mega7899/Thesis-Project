@@ -40,6 +40,12 @@ function prepareImageOnCanvas(fileInputElement) {
   };
 }
 
+function applyImageFilterAndRunOcr(canvasSource) {
+  const imageFilter = new InvertFilter(canvasSource);
+  imageFilter.process(canvasSource);
+  runOcrAnalysis(canvasSource);
+}
+
 // Invert the image and run OCR.
 function runOcrAnalysis(canvasSource) {
   console.log("preprocess is working.");
