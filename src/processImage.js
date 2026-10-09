@@ -1,26 +1,28 @@
+import { createWorker } from "tesseract.js";
+import { InvertFilter } from "image-filter-js";
+import { partial_ratio } from "fuzzball";
 import { getMasterlistData } from "./studentRegister";
 
-//Global Variable
+// Global variables
 const screenshotFileInput = document.getElementById("screenShots");
 const submitScreenshotBtn = document.getElementById("send-screenShots");
 const alternativeScreenshotInput = document.getElementById("screenShots");
-const matchedSectionCodes = [];
-const matchedStudentNames = [];
+const studentCount = [];
+let rawScannedOcr;
+let ocrNames;
 
-
-//Run the program, When the button is cliked
+// Run the program when the button is clicked.
 submitScreenshotBtn.addEventListener("click", () => {
   console.log("The button has been clicked pls wait.");
 
-  let activeImageFile;
   if (screenshotFileInput.files[0]) {
-    activeImageFile = prepareImageOnCanvas(screenshotFileInput);
+    prepareImageOnCanvas(screenshotFileInput);
   } else if (alternativeScreenshotInput.files[0]) {
-    activeImageFile = prepareImageOnCanvas(alternativeScreenshotInput);
+    prepareImageOnCanvas(alternativeScreenshotInput);
   }
 });
 
-//Pre-process image
+// Pre-process image.
 function prepareImageOnCanvas(fileInputElement) {
   const imageFile = fileInputElement.files[0];
   const fileReader = new FileReader();
@@ -35,12 +37,11 @@ function prepareImageOnCanvas(fileInputElement) {
     imageElement.onload = () => {
       canvasContext.drawImage(imageElement, 0, 0, 1366, 789);
       applyImageFilterAndRunOcr(processingCanvas);
-
     };
   };
 }
 
-//invert image file to white and text to black
+// Invert the image and run OCR.
 function runOcrAnalysis(canvasSource) {
   console.log("preprocess is working.");
 
@@ -48,67 +49,144 @@ function runOcrAnalysis(canvasSource) {
     const ocrWorker = await createWorker("eng");
     const ocrResult = await ocrWorker.recognize(canvasSource);
     const extractedText = ocrResult.data.text;
-    matchOcrNamesWithMasterlist(extractedText);
+    extractingNames(extractedText);
     await ocrWorker.terminate();
     console.log("the program has stopped.");
   })();
 }
 
-//Working on progress
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function matchOcrNamesWithMasterlist(rawOcrText) {
-  const masterlistCriteria = getMasterlistData();
-  const liveAttendanceTableBody = document.getElementById("studentData");
-  const masterlistValues = masterlistCriteria.studentName;
-  const masterNames = masterlistValues.filter((_, index) => index % 2 === 0);
-  const masterSections = masterlistValues.filter((_, index) => index % 2 === 1);
-
-  // Escape punctuation such as commas, then test longer names first. This is
-  // important for names like "AREVALO, JHON CRIST G".
-  const regexNamePattern = masterNames
-    .filter(Boolean)
-    .sort((a, b) => String(b).length - String(a).length)
-    .map((name) => escapeRegex(String(name).trim()))
-    .join("|");
-
-  if (!regexNamePattern) return;
-
-  const searchRegex = new RegExp(`(?<![A-Za-z])(?:${regexNamePattern})(?![A-Za-z])`, "gi");
-  const identifiedMatches = rawOcrText.match(searchRegex) ?? [];
-  const matchedNames = [];
-  const matchedSections = [];
-
-  identifiedMatches.forEach((matchedString) => {
-    const matchedIndex = masterNames.findIndex(
-      (name) => String(name).trim().toLowerCase() === matchedString.trim().toLowerCase()
-    );
-
-    if (matchedIndex !== -1 && !matchedNames.includes(masterNames[matchedIndex])) {
-      matchedNames.push(masterNames[matchedIndex]);
-      matchedSections.push(masterSections[matchedIndex] ?? "");
-    }
-  });
-
-  matchedStudentNames.push(...matchedNames);
-  matchedSectionCodes.push(...matchedSections);
-
-  for (let i = 0; i < matchedNames.length; i++) {
-    const newRow = document.createElement("tr");
-    newRow.innerHTML = `<td>${matchedSections[i]}</td><td>${matchedNames[i]}</td><td>Present</td>`;
-    liveAttendanceTableBody.insertAdjacentElement("beforebegin", newRow);
-  }
-
-  console.log("OCR matches:", matchedNames);
-  return getExtractedStudentNames();
+function normalizeName(value) {
+  return String(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-export function getExtractedStudentNames(){
-  const exportedStudentPayload = {
-    student: matchedStudentNames
+function matchOcrNamesWithMasterlist(rawOcrText) {
+  const masterlist = getMasterlistData();
+  const normalizedOcrText = normalizeName(rawOcrText);
+  const exactMatches = [];
+  const matchedStudentIndices = new Set();
+
+  const regexNamePattern = masterlist
+    .map((student) => normalizeName(student.name))
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegex)
+    .join("|");
+
+  if (regexNamePattern) {
+    const searchRegex = new RegExp(`(?<![A-Z])(?:${regexNamePattern})(?![A-Z])`, "g");
+
+    for (const matchedName of normalizedOcrText.match(searchRegex) ?? []) {
+      const studentIndex = masterlist.findIndex(
+        (student) => normalizeName(student.name) === matchedName
+      );
+
+      if (studentIndex !== -1 && !matchedStudentIndices.has(studentIndex)) {
+        matchedStudentIndices.add(studentIndex);
+        exactMatches.push({
+          name: masterlist[studentIndex].name,
+          sectionCode: masterlist[studentIndex].sectionCode,
+          score: 100,
+        });
+      }
+    }
   }
 
-  return exportedStudentPayload;
+  return exactMatches;
+}
+
+function extractingNames(text) {
+  const regexPattern = /[A-Z]\d{3,4}[_\s]+[A-Z]/gi;
+  const matchText = [...text.matchAll(regexPattern)];
+
+  if (matchText.length === 0) return;
+
+  const startIndex = matchText[0].index;
+  const lastMatchIndex = matchText[matchText.length - 1].index;
+  const lineEnd = text.indexOf("\n", lastMatchIndex);
+  const endIndex = lineEnd !== -1 ? lineEnd : text.length;
+  const resultBlock = text.slice(startIndex, endIndex);
+
+  rawScannedOcr = resultBlock;
+  scanStudentName(resultBlock);
+}
+
+function scanStudentName(text) {
+  const studentMasterlist = getMasterlistData();
+  studentCount.length = 0;
+
+  const regexMatches = matchOcrNamesWithMasterlist(text);
+  const matchedStudentNames = new Set(regexMatches.map((student) => normalizeName(student.name)));
+  studentCount.push(...regexMatches);
+
+  const cleanText = normalizeName(text);
+  const regPattern = /[A-Z]\d+[A-Z]+[A-Z]+/gi;
+  ocrNames = cleanText.match(regPattern) || [];
+  const candidates = [];
+
+  for (let i = 0; i < studentMasterlist.length; i += 1) {
+    const student = studentMasterlist[i];
+    if (matchedStudentNames.has(normalizeName(student.name))) continue;
+
+    for (let n = 0; n < ocrNames.length; n += 1) {
+      const score = partial_ratio(normalizeName(ocrNames[n]), normalizeName(student.name));
+      if (score >= 50) {
+        candidates.push({ studentIndex: i, ocrIndex: n, student, score });
+      }
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  const claimedStudentIndices = new Set();
+  const claimedOcrIndices = new Set();
+
+  for (const candidate of candidates) {
+    if (claimedStudentIndices.has(candidate.studentIndex) || claimedOcrIndices.has(candidate.ocrIndex)) continue;
+
+    claimedStudentIndices.add(candidate.studentIndex);
+    claimedOcrIndices.add(candidate.ocrIndex);
+    studentCount.push({
+      name: candidate.student.name,
+      sectionCode: candidate.student.sectionCode,
+      score: candidate.score,
+    });
+  }
+
+  renderCombineResult(studentCount);
+  console.log(studentCount);
+}
+
+export function renderCombineResult(matchedData) {
+  const currentAttendanceTable = document.getElementById("studentData");
+  if (!currentAttendanceTable) {
+    console.warn("Target element #studentData was not found in the DOM.");
+    return;
+  }
+
+  currentAttendanceTable.replaceChildren();
+
+  matchedData.forEach((student) => {
+    const studentRow = document.createElement("tr");
+    const sectionCell = document.createElement("td");
+    const nameCell = document.createElement("td");
+    const statusCell = document.createElement("td");
+
+    sectionCell.textContent = student.sectionCode;
+    nameCell.textContent = student.name;
+    statusCell.textContent = "Present";
+
+    studentRow.append(sectionCell, nameCell, statusCell);
+    currentAttendanceTable.appendChild(studentRow);
+  });
+}
+
+export function catchStudenName() {
+  return studentCount;
 }

@@ -3,6 +3,7 @@ import "../styles/style.scss";
 import "../src/chart";
 import "../src/processImage";
 import '../src/studentRegister';
+import "../src/validation";
 
 // INTERACTABILITY
 // Menu button navigation
