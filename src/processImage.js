@@ -133,7 +133,8 @@ function ruleBasedNameScore(ocrName, masterName) {
   );
 
   const tokenScore = (matchedTokens.length / masterTokens.length) * 75;
-  const surnameScore = matchedTokens.includes(masterTokens[0]) ? 15 : 0;
+  // Give an exact surname match enough weight to pass the matching threshold even when OCR misses the given name.
+  const surnameScore = matchedTokens.includes(masterTokens[0]) ? 35 : 0;
   const orderScore = masterTokens.every((token, index) => token === ocrTokens[index]) ? 10 : 0;
 
   return Math.min(100, Math.round(tokenScore + surnameScore + orderScore));
