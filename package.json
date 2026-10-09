@@ -16,7 +16,5 @@
     "vite": "^8.0.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
-  "dependencies": {
-    "fuzzball": "^2.2.6"
-  }
+  "dependencies": {}
 }

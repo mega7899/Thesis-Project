@@ -1,6 +1,5 @@
 import { createWorker } from "tesseract.js";
 import { InvertFilter } from "image-filter-js";
-import { partial_ratio } from "fuzzball";
 import { getMasterlistData } from "./studentRegister";
 
 // Global variables
@@ -118,6 +117,22 @@ function extractingNames(text) {
   scanStudentName(resultBlock);
 }
 
+function ruleBasedNameScore(ocrName, masterName) {
+  const ocrTokens = normalizeName(ocrName).split(" ").filter(Boolean);
+  const masterTokens = normalizeName(masterName).split(" ").filter(Boolean);
+  if (!ocrTokens.length || !masterTokens.length) return 0;
+
+  const matchedTokens = masterTokens.filter((masterToken) =>
+    ocrTokens.some((ocrToken) => ocrToken === masterToken || ocrToken.includes(masterToken) || masterToken.includes(ocrToken))
+  );
+
+  const tokenScore = (matchedTokens.length / masterTokens.length) * 75;
+  const surnameScore = matchedTokens.includes(masterTokens[0]) ? 15 : 0;
+  const orderScore = masterTokens.every((token, index) => token === ocrTokens[index]) ? 10 : 0;
+
+  return Math.min(100, Math.round(tokenScore + surnameScore + orderScore));
+}
+
 function scanStudentName(text) {
   const studentMasterlist = getMasterlistData();
   studentCount.length = 0;
@@ -127,7 +142,7 @@ function scanStudentName(text) {
   studentCount.push(...regexMatches);
 
   const cleanText = normalizeName(text);
-  const regPattern = /[A-Z]\d+[A-Z]+[A-Z]+/gi;
+  const regPattern = /[A-Z][A-Z0-9]*(?:\s+[A-Z][A-Z0-9]*)+/g;
   ocrNames = cleanText.match(regPattern) || [];
   const candidates = [];
 
@@ -136,8 +151,8 @@ function scanStudentName(text) {
     if (matchedStudentNames.has(normalizeName(student.name))) continue;
 
     for (let n = 0; n < ocrNames.length; n += 1) {
-      const score = partial_ratio(normalizeName(ocrNames[n]), normalizeName(student.name));
-      if (score >= 50) {
+      const score = ruleBasedNameScore(ocrNames[n], student.name);
+      if (score >= 60) {
         candidates.push({ studentIndex: i, ocrIndex: n, student, score });
       }
     }
