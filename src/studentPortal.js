@@ -7,7 +7,7 @@ const logoutBtn = document.getElementById('logout-btn');
 // Later this will come from the database.
 const todayAttendance = {
   date: 'October 13, 2026',
-  section: 'LFAU322A003MC',
+  section: 'LFCA411A122',
   status: 'Present'
 };
 
