@@ -8,10 +8,12 @@ const combinedAttendanceTable = document.getElementById('combineData');
 let currentSectionCode = null;
 let parsedMasterlist = [];
 
-submitMasterlist.addEventListener('click', ()=>{
-  console.log('The button has been clicked!');
-  processMasterlistWorkbook();
-})
+if (submitMasterlist) {
+  submitMasterlist.addEventListener('click', () => {
+    console.log('The button has been clicked!');
+    processMasterlistWorkbook();
+  });
+}
 
 async function processMasterlistWorkbook() {
   console.log('data file rendering is processing.');

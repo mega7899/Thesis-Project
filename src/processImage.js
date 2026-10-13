@@ -12,16 +12,19 @@ let rawScannedOcr;
 let ocrNames;
 
 //Run the program, When the button is cliked
-submitScreenshotBtn.addEventListener("click", () => {
-  console.log("The button has been clicked pls wait.");
+if (submitScreenshotBtn) {
+  submitScreenshotBtn.addEventListener("click", () => {
+    console.log("The button has been clicked pls wait.");
 
-  let activeImageFile;
-  if (screenshotFileInput.files[0]) {
-    activeImageFile = prepareImageOnCanvas(screenshotFileInput);
-  } else if (alternativeScreenshotInput.files[0]) {
-    activeImageFile = prepareImageOnCanvas(alternativeScreenshotInput);
-  }
-});
+    let activeImageFile;
+
+    if (screenshotFileInput?.files[0]) {
+      activeImageFile = prepareImageOnCanvas(screenshotFileInput);
+    } else if (alternativeScreenshotInput?.files[0]) {
+      activeImageFile = prepareImageOnCanvas(alternativeScreenshotInput);
+    }
+  });
+}
 
 //Pre-process image
 function prepareImageOnCanvas(fileInputElement) {
@@ -169,4 +172,8 @@ export function renderCombineResult(matchedData) {
 
 export function catchStudenName() {
   return studentCount;
+}
+
+export function testingMaterials() {
+  return rawScannedOcr;
 }
