@@ -2,32 +2,6 @@ const attendanceToday = document.getElementById('attendance-today');
 const attendanceHistory = document.getElementById('attendance-history');
 const logoutBtn = document.getElementById('logout-btn');
 
-
-// Temporary data only.
-// Later this will come from the database.
-const todayAttendance = {
-  date: 'October 13, 2026',
-  section: 'LFCA411A122',
-  status: 'Present'
-};
-
-
-const attendanceRecords = [
-  {
-    date: 'October 13, 2026',
-    status: 'Present'
-  },
-  {
-    date: 'October 10, 2026',
-    status: 'Present'
-  },
-  {
-    date: 'October 8, 2026',
-    status: 'Absent'
-  }
-];
-
-
 function renderTodayAttendance() {
   attendanceToday.replaceChildren();
 
