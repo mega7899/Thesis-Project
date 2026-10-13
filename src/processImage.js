@@ -2,6 +2,9 @@ import { createWorker } from "tesseract.js";
 import { InvertFilter } from "image-filter-js";
 import { partial_ratio} from 'fuzzball';
 import { getMasterlistData } from './studentRegister';
+import {
+  detectFacesInGrid
+} from './faceDetection';
 
 //Global Variable
 const screenshotFileInput = document.getElementById("screenShots");
@@ -38,7 +41,25 @@ function prepareImageOnCanvas(fileInputElement) {
   fileReader.onload = () => {
     imageElement.src = fileReader.result;
 
-    imageElement.onload = () => {
+    imageElement.onload = async () => {
+
+      const gridConfig = {
+        startX: 150,
+        startY: 60,
+        width: 1060,
+        height: 600,
+        rows: 5,
+        columns: 5
+      };
+
+      const tileResults =
+        await detectFacesInGrid(
+          imageElement,
+          gridConfig
+        );
+
+      console.table(tileResults);
+     
       canvasContext.drawImage(imageElement, 0, 0, 1366, 789);
       let filterInstance = new InvertFilter(processingCanvas);
       filterInstance.process(imageElement);
