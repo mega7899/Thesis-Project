@@ -114,6 +114,12 @@ export async function detectFacesInGrid(imageSource, gridConfig) {
         row: row,
         column: column,
         tileNumber: (row * columns) + column + 1,
+
+        sourceX: sourceX,
+        sourceY: sourceY,
+        tileWidth: tileWidth,
+        tileHeight: tileHeight,
+
         faceCount: detections.length,
         hasFace: detections.length > 0
       });
