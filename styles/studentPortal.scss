@@ -1,0 +1,133 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+
+  font-family: Arial, sans-serif;
+
+  background-color: #eef8ff;
+}
+
+
+/* Sidebar */
+
+.student-sidebar {
+  width: 220px;
+  min-height: 100vh;
+
+  padding: 30px 15px;
+
+  background-color: #061957;
+  color: white;
+}
+
+.student-sidebar h2 {
+  margin-top: 0;
+
+  padding-bottom: 20px;
+
+  border-bottom: 2px solid white;
+}
+
+.student-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.student-sidebar button {
+  padding: 12px;
+
+  border: none;
+  border-radius: 4px;
+
+  cursor: pointer;
+
+  font-size: 16px;
+}
+
+#logout-btn {
+  margin-top: 20px;
+
+  color: red;
+
+  font-weight: bold;
+}
+
+
+/* Main dashboard */
+
+.student-dashboard {
+  flex: 1;
+
+  padding: 35px 60px;
+}
+
+.student-dashboard h1 {
+  margin-top: 0;
+}
+
+
+/* Attendance sections */
+
+.attendance-section {
+  max-width: 850px;
+
+  margin: 50px auto;
+}
+
+.attendance-section h2 {
+  padding: 12px;
+
+  text-align: center;
+
+  background-color: #d8e9f5;
+}
+
+.attendance-card,
+.attendance-history {
+  min-height: 180px;
+
+  margin-top: 25px;
+  padding: 25px;
+
+  border-radius: 8px;
+
+  background-color: white;
+
+  border: 1px solid #cbd5df;
+}
+
+.attendance-card p {
+  margin: 15px 0;
+
+  font-size: 18px;
+}
+
+.attendance-status {
+  font-weight: bold;
+}
+
+
+.attendance-history table {
+  width: 100%;
+
+  border-collapse: collapse;
+}
+
+.attendance-history th,
+.attendance-history td {
+  padding: 14px;
+
+  border-bottom: 1px solid #d3d3d3;
+
+  text-align: left;
+}
+
+.attendance-history th {
+  background-color: #d8e9f5;
+}
