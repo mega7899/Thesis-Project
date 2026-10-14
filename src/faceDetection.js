@@ -3,7 +3,7 @@ import * as faceapi from 'face-api.js';
 let modelLoaded = false;
 
 
-/**
+/*
  * Loads the Tiny Face Detector model.
  */
 export async function loadFaceDetectionModel() {
@@ -19,7 +19,7 @@ export async function loadFaceDetectionModel() {
 }
 
 
-/**
+/*
  * Detects every visible face inside an image.
  *
  * @param {HTMLImageElement | HTMLCanvasElement} imageSource
@@ -125,6 +125,161 @@ export async function detectFacesInGrid(imageSource, gridConfig) {
       });
     }
   }
+
+  return results;
+}
+
+export async function detectFacesInRegions(
+  imageSource,
+  participantRegions
+) {
+
+  await loadFaceDetectionModel();
+
+
+  const detectorOptions =
+    new faceapi.TinyFaceDetectorOptions({
+      inputSize: 320,
+      scoreThreshold: 0.25
+    });
+
+
+  const canvas =
+    document.createElement("canvas");
+
+  const context =
+    canvas.getContext("2d");
+
+
+  const results = [];
+
+
+  for (const region of participantRegions) {
+
+    /*
+     * shrink the participant region.
+     */
+    const horizontalPadding =
+      region.width * 0.08;
+
+    const topPadding =
+      region.height * 0.05;
+
+    /*
+     * remove more space from the bottom where name label is placed.
+     */
+    const bottomPadding =
+      region.height * 0.18;
+
+
+    const safeX =
+      region.sourceX +
+      horizontalPadding;
+
+    const safeY =
+      region.sourceY +
+      topPadding;
+
+
+    const safeWidth =
+      region.width -
+      (horizontalPadding * 2);
+
+    const safeHeight =
+      region.height -
+      topPadding -
+      bottomPadding;
+
+
+    /*
+     * prevent invalid canvas sizes.
+     */
+    if (
+      safeWidth <= 0 ||
+      safeHeight <= 0
+    ) {
+
+      results.push({
+        ...region,
+
+        faceCount: 0,
+        hasFace: false
+      });
+
+      continue;
+    }
+
+
+    canvas.width =
+      Math.max(
+        1,
+        Math.round(safeWidth)
+      );
+
+    canvas.height =
+      Math.max(
+        1,
+        Math.round(safeHeight)
+      );
+
+
+    context.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+    context.drawImage(
+      imageSource,
+
+      safeX,
+      safeY,
+      safeWidth,
+      safeHeight,
+
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+    const detections =
+      await faceapi.detectAllFaces(
+        canvas,
+        detectorOptions
+      );
+
+
+    results.push({
+      ...region,
+
+      faceCount:
+        detections.length,
+
+      hasFace:
+        detections.length > 0,
+
+      /*
+       * temporary for debugging, use for checking if participant crop is correct.
+       */
+      detectionX:
+        safeX,
+
+      detectionY:
+        safeY,
+
+      detectionWidth:
+        safeWidth,
+
+      detectionHeight:
+        safeHeight
+    });
+
+  }
+
 
   return results;
 }

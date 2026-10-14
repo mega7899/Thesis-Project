@@ -42,20 +42,42 @@ async function processMasterlistWorkbook() {
 
     // Inside processMasterlistWorkbook() in StudentRegister.js
     parsedSheetData.forEach(row => {
-      if (row[0] === undefined || row[1] === undefined) {
-        console.warn('Skipping incomplete masterlist row:', row);
+      const section =
+        row[0] !== undefined
+          ? String(row[0]).trim()
+          : '';
+
+      const lastName =
+        row[1] !== undefined
+          ? String(row[1]).trim()
+          : '';
+
+      const firstName =
+        row[2] !== undefined
+          ? String(row[2]).trim()
+          : '';
+
+      // A student must at least have a last name.
+      if (!lastName) {
+        console.warn(
+          'Skipping masterlist row without a last name:',
+          row
+        );
+
         return;
       }
 
-      const studentName = String(row[0]).trim();
-      const section = row[1];
-      const currentSectionCode = String(row[1]).slice(7).trim();
+      // Match the format used by the Zoom names:
+      const studentName =
+        firstName
+          ? `${lastName}, ${firstName}`
+          : lastName;
 
-      // Push an object instead of two flat elements
       parsedMasterlist.push({
         name: studentName,
-        section: section,
-        sectionCode: currentSectionCode
+        lastName: lastName,
+        firstName: firstName,
+        sectionCode: section || 'N/A'
       });
     });
 
@@ -75,8 +97,11 @@ function renderStudentList() {
     const sectionCell = document.createElement('td');
     const nameCell = document.createElement('td');
 
-    sectionCell.textContent = student.section;
-    nameCell.textContent = student.name;
+    sectionCell.textContent =
+      student.sectionCode || 'N/A';
+
+    nameCell.textContent =
+      student.name;
 
     studentRow.append(sectionCell, nameCell);
     studentList.appendChild(studentRow);

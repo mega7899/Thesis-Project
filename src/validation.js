@@ -1,78 +1,279 @@
 import { getMasterlistData } from "../src/studentRegister";
 import { catchStudenName } from "../src/processImage";
-import { utils, writeFile } from 'xlsx'
+import { utils, writeFile } from "xlsx";
 
-const combineBtn = document.getElementById('combineTable');
-const combinedAttendanceTable = document.getElementById('combineSheetData');
-const exportExcelBtn = document.getElementById('exportTable');
-const candidates = new Map();
 
-combineBtn.addEventListener('click', () => {    
+const combineBtn = document.getElementById("combineTable");
+const combinedAttendanceTable =
+  document.getElementById("combineSheetData");
+
+const exportExcelBtn =
+  document.getElementById("exportTable");
+
+
+combineBtn?.addEventListener("click", () => {
   validatingData();
 });
 
-exportExcelBtn.addEventListener('click', ()=>{
-  const newWorkbook = utils.table_to_book(combinedAttendanceTable);
-  writeFile(newWorkbook, "SheetJSTable.xlsx");
-})
+
+exportExcelBtn?.addEventListener("click", () => {
+  const newWorkbook =
+    utils.table_to_book(combinedAttendanceTable);
+
+  writeFile(
+    newWorkbook,
+    "SheetJSTable.xlsx"
+  );
+});
 
 
-function sorterOfArray(array){
-if (!Array.isArray(array)) return [];
-
-  // Sorts in-place and returns the array
-  return array.sort((a, b) => {
-    const nameA = a?.name || '';
-    const nameB = b?.name || '';
-    return nameA.localeCompare(nameB);
-  });
-} 
-
-function attendanceChecker(candidate){
-  candidate.forEach(student => {
-    if(!candidates.has(student.name)){
-      candidates.set(student.name, {
-        section: student.sectionCode,
-        attendance: false
-      })
-    }else{
-      candidates.set(student.name, {
-      section: student.sectionCode,
-      attendance: true
-    })
-    }
-  });
+function normalizeName(name) {
+  return String(name || "")
+    .toUpperCase()
+    .replace(/[_,-]/g, " ")
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function validatingData(){
-  // Clear previous rows to avoid duplicate rendering
-  combinedAttendanceTable.innerHTML = '';
 
-  // Checks if getMasterlistData, and catchStudenName have any values
-  const studentList = getMasterlistData() || [];
-  const catchStudentData = catchStudenName() || [];
+function validatingData() {
 
-  // Sort both arrays of objects by their .name property
-  const sortedStudents = sorterOfArray(studentList);
-  const sortedOcrData = sorterOfArray(catchStudentData);
+  combinedAttendanceTable.replaceChildren();
 
-  attendanceChecker(sortedStudents);
-  attendanceChecker(sortedOcrData);
-  console.log(candidates);
-  renderTable();
-}
 
-function renderTable(){
-  for (const [name, data] of candidates) {
-    const row = document.createElement('tr');
-    const statusText = data.attendance ? 'Present' : 'Absent';
+  const studentList =
+    getMasterlistData() || [];
 
-    row.innerHTML = `
-      <td>${data.section || 'N/A'}</td>
-      <td>${name}</td>
-      <td>${statusText}</td>
-    `;
+  const currentAttendance =
+    catchStudenName() || [];
+
+
+  /*
+   * current Attendance should contain
+   * students detected by OCR + face detection.
+   *
+   * store their normalized names for
+   * quick comparison.
+   */
+  const presentNames =
+    new Set(
+      currentAttendance.map(student =>
+        normalizeName(student.name)
+      )
+    );
+
+
+  //students in masterlist gets either present or absent
+  
+  studentList.forEach(student => {
+
+    const studentName =
+      normalizeName(student.name);
+
+    const isPresent =
+      presentNames.has(studentName);
+
+
+    const row =
+      document.createElement("tr");
+
+    const sectionCell =
+      document.createElement("td");
+
+    const nameCell =
+      document.createElement("td");
+
+    const statusCell =
+      document.createElement("td");
+
+
+    sectionCell.textContent =
+      student.sectionCode || "N/A";
+
+    nameCell.textContent =
+      student.name;
+
+    statusCell.textContent =
+      isPresent
+        ? "Present"
+        : "Absent";
+
+
+    row.append(
+      sectionCell,
+      nameCell,
+      statusCell
+    );
+
 
     combinedAttendanceTable.appendChild(row);
+  });
+}
+
+function normalizeForMatch(value) {
+
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[_,-]/g, " ")
+    .replace(
+      /[^A-Z0-9\s]/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchOcrLinesToStudents(
+  ocrLines
+) {
+
+  const masterlist =
+    getMasterlistData();
+
+
+  const candidates = [];
+
+
+  ocrLines.forEach(
+    (line, lineIndex) => {
+
+      const normalizedOcr =
+        normalizeForMatch(
+          line.text
+        );
+
+
+      masterlist.forEach(
+        (
+          student,
+          studentIndex
+        ) => {
+
+          const normalizedName =
+            normalizeForMatch(
+              student.name
+            );
+
+
+          const normalizedLabel =
+            normalizeForMatch(
+              `${student.sectionCode} ${student.name}`
+            );
+
+
+          const nameScore =
+            partial_ratio(
+              normalizedOcr,
+              normalizedName
+            );
+
+
+          const labelScore =
+            partial_ratio(
+              normalizedOcr,
+              normalizedLabel
+            );
+
+
+          const score =
+            Math.max(
+              nameScore,
+              labelScore
+            );
+
+
+          if (score >= 70) {
+
+            candidates.push({
+              lineIndex:
+                lineIndex,
+
+              studentIndex:
+                studentIndex,
+
+              student:
+                student,
+
+              line:
+                line,
+
+              score:
+                score
+            });
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+  //highest-confidence matches first.
+  candidates.sort(
+    (a, b) =>
+      b.score -
+      a.score
+  );
+
+
+  const claimedLines =
+    new Set();
+
+  const claimedStudents =
+    new Set();
+
+  const results = [];
+
+
+  for (
+    const candidate of candidates
+  ) {
+
+    if (
+      claimedLines.has(
+        candidate.lineIndex
+      ) ||
+      claimedStudents.has(
+        candidate.studentIndex
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    claimedLines.add(
+      candidate.lineIndex
+    );
+
+    claimedStudents.add(
+      candidate.studentIndex
+    );
+
+
+    results.push({
+      name:
+        candidate.student.name,
+
+      sectionCode:
+        candidate.student.sectionCode,
+
+      matchScore:
+        candidate.score,
+
+      ocrText:
+        candidate.line.text,
+
+      bbox:
+        candidate.line.bbox
+    });
+
   }
+
+
+  return results;
 }
