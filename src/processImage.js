@@ -1,43 +1,24 @@
 import { createWorker } from "tesseract.js";
 import { InvertFilter } from "image-filter-js";
 import { partial_ratio } from "fuzzball";
+import { getMasterlistData } from "./studentRegister";
+import { detectFacesInRegions } from "./faceDetection";
+import { buildParticipantRegions } from "./layoutDetection";
 
-import {
-  getMasterlistData
-} from "./studentRegister";
-
-import {
-  detectFacesInRegions
-} from "./faceDetection";
-
-import {
-  buildParticipantRegions
-} from "./layoutDetection";
-
-
-// --------------------------------------------------
 // DOM
-// --------------------------------------------------
-
 const screenshotFileInput =
   document.getElementById("screenShots");
 
 const submitScreenshotBtn =
   document.getElementById("send-screenShots");
 
-
-// --------------------------------------------------
 // Shared state
-// --------------------------------------------------
 
 const studentCount = [];
 
 let rawScannedOcr;
 
-
-// --------------------------------------------------
 // Screenshot upload
-// --------------------------------------------------
 
 if (submitScreenshotBtn) {
 
@@ -49,7 +30,6 @@ if (submitScreenshotBtn) {
         "Screenshot processing started."
       );
 
-
       if (!screenshotFileInput?.files[0]) {
 
         console.warn(
@@ -59,7 +39,6 @@ if (submitScreenshotBtn) {
         return;
       }
 
-
       prepareImageOnCanvas(
         screenshotFileInput
       );
@@ -68,11 +47,7 @@ if (submitScreenshotBtn) {
   );
 
 }
-
-
-// --------------------------------------------------
 // Load screenshot
-// --------------------------------------------------
 
 function prepareImageOnCanvas(
   fileInputElement
@@ -81,27 +56,21 @@ function prepareImageOnCanvas(
   const imageFile =
     fileInputElement.files[0];
 
-
   const fileReader =
     new FileReader();
-
 
   const processingCanvas =
     document.createElement("canvas");
 
-
   const canvasContext =
     processingCanvas.getContext("2d");
-
 
   const imageElement =
     document.createElement("img");
 
-
   fileReader.readAsDataURL(
     imageFile
   );
-
 
   fileReader.onload = () => {
 
@@ -112,17 +81,13 @@ function prepareImageOnCanvas(
     imageElement.onload =
       async () => {
 
-        /*
-         * Keep the OCR canvas at exactly
-         * the same dimensions as the
-         * original screenshot.
-         */
+        //keep the original screenshot in memory for face-api and OCR processing.
+         
         processingCanvas.width =
           imageElement.naturalWidth;
 
         processingCanvas.height =
           imageElement.naturalHeight;
-
 
         canvasContext.drawImage(
           imageElement,
@@ -132,11 +97,6 @@ function prepareImageOnCanvas(
           processingCanvas.height
         );
 
-
-        /*
-         * Preserve your classmate's
-         * preprocessing step for OCR.
-         */
         const filterInstance =
           new InvertFilter(
             processingCanvas
@@ -147,16 +107,6 @@ function prepareImageOnCanvas(
           imageElement
         );
 
-
-        /*
-         * IMPORTANT:
-         *
-         * First argument:
-         * processed canvas for OCR
-         *
-         * Second argument:
-         * original image for face-api
-         */
         await runOcrAnalysis(
           processingCanvas,
           imageElement
@@ -168,10 +118,7 @@ function prepareImageOnCanvas(
 
 }
 
-
-// --------------------------------------------------
 // Main OCR + face pipeline
-// --------------------------------------------------
 
 async function runOcrAnalysis(
   canvasSource,
@@ -182,10 +129,8 @@ async function runOcrAnalysis(
     "OCR processing started."
   );
 
-
   const ocrWorker =
     await createWorker("eng");
-
 
   try {
 
@@ -202,21 +147,15 @@ async function runOcrAnalysis(
     rawScannedOcr =
       ocrResult.data.text;
 
-
     const blocks =
       ocrResult.data.blocks || [];
 
-
-    // ----------------------------------------------
-    // 1. Extract OCR words and reconstruct
-    //    candidate Zoom name labels
-    // ----------------------------------------------
-
+    // extract OCR words and arrange candidate Zoom name labels
+    
     const candidateLabels =
       extractCandidateLabels(
         blocks
       );
-
 
     console.table(
       candidateLabels.map(
@@ -239,16 +178,12 @@ async function runOcrAnalysis(
       )
     );
 
-
-    // ----------------------------------------------
-    // 2. Match Zoom labels to official students
-    // ----------------------------------------------
-
+    // match Zoom labels to official students
+   
     const matchedLabels =
       matchCandidateLabelsToStudents(
         candidateLabels
       );
-
 
     console.table(
       matchedLabels.map(
@@ -280,17 +215,13 @@ async function runOcrAnalysis(
       )
     );
 
-
-    /*
-     * If nothing matched, don't continue
-     * into layout/face detection.
-     */
+    //for debugging purposes, if nothing match it won't continue
+     
     if (!matchedLabels.length) {
 
       console.warn(
         "No Zoom participant names matched the masterlist."
       );
-
 
       studentCount.length = 0;
 
@@ -301,18 +232,14 @@ async function runOcrAnalysis(
       return;
     }
 
-
-    // ----------------------------------------------
-    // 3. Infer Zoom participant regions dynamically
-    // ----------------------------------------------
-
+    // finalize zoom participant regions dynamically
+   
     const participantRegions =
       buildParticipantRegions(
         matchedLabels,
         originalImage.naturalWidth,
         originalImage.naturalHeight
       );
-
 
     console.table(
       participantRegions.map(
@@ -345,17 +272,13 @@ async function runOcrAnalysis(
       )
     );
 
-
-    // ----------------------------------------------
-    // 4. Run face-api on each inferred participant
-    // ----------------------------------------------
-
+    // run face-api on each participant
+    
     const participants =
       await detectFacesInRegions(
         originalImage,
         participantRegions
       );
-
 
     console.table(
       participants.map(
@@ -380,30 +303,16 @@ async function runOcrAnalysis(
       )
     );
 
-
-    // ----------------------------------------------
-    // 5. Current Attendance
-    // ----------------------------------------------
-
+    //Current Attendance
+  
     studentCount.length = 0;
-
 
     participants.forEach(
       participant => {
 
-        /*
-         * Current thesis rule:
-         *
-         * matched student + detectable face
-         * = Present
-         *
-         * Static profile-photo false positives
-         * are a documented limitation.
-         */
         if (!participant.hasFace) {
           return;
         }
-
 
         studentCount.push({
 
@@ -426,7 +335,6 @@ async function runOcrAnalysis(
       studentCount
     );
 
-
     console.log(
       "Current attendance:",
       studentCount
@@ -447,7 +355,6 @@ async function runOcrAnalysis(
 
     await ocrWorker.terminate();
 
-
     console.log(
       "OCR processing finished."
     );
@@ -456,17 +363,12 @@ async function runOcrAnalysis(
 
 }
 
-
-// --------------------------------------------------
 // OCR word extraction
-// --------------------------------------------------
 
 function extractOcrWords(
   blocks
 ) {
-
   const words = [];
-
 
   blocks.forEach(
     block => {
@@ -528,10 +430,7 @@ function extractOcrWords(
   return words;
 }
 
-
-// --------------------------------------------------
 // Group OCR words into visual rows
-// --------------------------------------------------
 
 function groupWordsIntoRows(
   words
@@ -540,7 +439,6 @@ function groupWordsIntoRows(
   if (!words.length) {
     return [];
   }
-
 
   const sorted =
     [...words].sort(
@@ -551,15 +449,12 @@ function groupWordsIntoRows(
         b.bbox.x0
     );
 
-
   const rows = [];
-
 
   sorted.forEach(
     word => {
 
       let targetRow = null;
-
 
       for (
         const row of rows
@@ -570,7 +465,6 @@ function groupWordsIntoRows(
             12,
             word.height * 1.5
           );
-
 
         if (
           Math.abs(
@@ -585,7 +479,6 @@ function groupWordsIntoRows(
         }
 
       }
-
 
       if (!targetRow) {
 
@@ -603,11 +496,9 @@ function groupWordsIntoRows(
         return;
       }
 
-
       targetRow.words.push(
         word
       );
-
 
       targetRow.centerY =
         targetRow.words.reduce(
@@ -625,10 +516,7 @@ function groupWordsIntoRows(
   return rows;
 }
 
-
-// --------------------------------------------------
 // Split each OCR row into separate Zoom labels
-// --------------------------------------------------
 
 function splitRowIntoLabels(
   row
@@ -646,7 +534,6 @@ function splitRowIntoLabels(
     return [];
   }
 
-
   const averageHeight =
     words.reduce(
       (sum, word) =>
@@ -656,26 +543,16 @@ function splitRowIntoLabels(
     ) /
     words.length;
 
-
-  /*
-   * Words inside the same Zoom name
-   * are relatively close together.
-   *
-   * A much larger horizontal gap
-   * normally means the next Zoom tile.
-   */
   const gapThreshold =
     Math.max(
       35,
       averageHeight * 3
     );
 
-
   const groups = [];
 
   let currentGroup =
     [words[0]];
-
 
   for (
     let index = 1;
@@ -689,11 +566,9 @@ function splitRowIntoLabels(
     const current =
       words[index];
 
-
     const horizontalGap =
       current.bbox.x0 -
       previous.bbox.x1;
-
 
     if (
       horizontalGap >
@@ -703,7 +578,6 @@ function splitRowIntoLabels(
       groups.push(
         currentGroup
       );
-
 
       currentGroup =
         [current];
@@ -720,11 +594,9 @@ function splitRowIntoLabels(
 
   }
 
-
   groups.push(
     currentGroup
   );
-
 
   return groups.map(
     group => ({
@@ -778,10 +650,7 @@ function splitRowIntoLabels(
   );
 }
 
-
-// --------------------------------------------------
 // Candidate Zoom labels
-// --------------------------------------------------
 
 function extractCandidateLabels(
   blocks
@@ -792,12 +661,10 @@ function extractCandidateLabels(
       blocks
     );
 
-
   const rows =
     groupWordsIntoRows(
       words
     );
-
 
   return rows.flatMap(
     row =>
@@ -807,10 +674,7 @@ function extractCandidateLabels(
   );
 }
 
-
-// --------------------------------------------------
 // Normalize OCR/masterlist names
-// --------------------------------------------------
 
 function normalizeForMatch(
   value
@@ -840,10 +704,7 @@ function normalizeForMatch(
     .trim();
 }
 
-
-// --------------------------------------------------
 // Match candidate Zoom labels to masterlist
-// --------------------------------------------------
 
 function matchCandidateLabelsToStudents(
   labels
@@ -852,9 +713,7 @@ function matchCandidateLabelsToStudents(
   const masterlist =
     getMasterlistData();
 
-
   const candidates = [];
-
 
   labels.forEach(
     (
@@ -867,17 +726,11 @@ function matchCandidateLabelsToStudents(
           label.text
         );
 
-
-      /*
-       * Very short OCR fragments such as
-       * "." or "E0" are not useful.
-       */
       if (
         normalizedOcr.length < 3
       ) {
         return;
       }
-
 
       masterlist.forEach(
         (
@@ -890,12 +743,10 @@ function matchCandidateLabelsToStudents(
               student.name
             );
 
-
           const normalizedFullLabel =
             normalizeForMatch(
               `${student.sectionCode} ${student.name}`
             );
-
 
           const nameScore =
             partial_ratio(
@@ -903,20 +754,17 @@ function matchCandidateLabelsToStudents(
               normalizedName
             );
 
-
           const completeScore =
             partial_ratio(
               normalizedOcr,
               normalizedFullLabel
             );
 
-
           const score =
             Math.max(
               nameScore,
               completeScore
             );
-
 
           if (
             score >= 60
@@ -948,8 +796,6 @@ function matchCandidateLabelsToStudents(
 
     }
   );
-
-
   /*
    * Strongest matches get first claim
    * on both the OCR label and student.
@@ -960,17 +806,13 @@ function matchCandidateLabelsToStudents(
       a.score
   );
 
-
   const claimedLabels =
     new Set();
-
 
   const claimedStudents =
     new Set();
 
-
   const results = [];
-
 
   for (
     const candidate
@@ -995,16 +837,13 @@ function matchCandidateLabelsToStudents(
 
     }
 
-
     claimedLabels.add(
       candidate.labelIndex
     );
 
-
     claimedStudents.add(
       candidate.studentIndex
     );
-
 
     results.push({
 
@@ -1027,14 +866,10 @@ function matchCandidateLabelsToStudents(
 
   }
 
-
   return results;
 }
 
-
-// --------------------------------------------------
 // Render Current Attendance
-// --------------------------------------------------
 
 export function renderCombineResult(
   matchedData
@@ -1044,7 +879,6 @@ export function renderCombineResult(
     document.getElementById(
       "studentData"
     );
-
 
   if (
     !currentAttendanceTable
@@ -1057,10 +891,8 @@ export function renderCombineResult(
     return;
   }
 
-
   currentAttendanceTable
     .replaceChildren();
-
 
   matchedData.forEach(
     student => {
@@ -1070,44 +902,36 @@ export function renderCombineResult(
           "tr"
         );
 
-
       const sectionCell =
         document.createElement(
           "td"
         );
-
 
       const nameCell =
         document.createElement(
           "td"
         );
 
-
       const statusCell =
         document.createElement(
           "td"
         );
 
-
       sectionCell.textContent =
         student.sectionCode ||
         "N/A";
 
-
       nameCell.textContent =
         student.name;
 
-
       statusCell.textContent =
         "Present";
-
 
       studentRow.append(
         sectionCell,
         nameCell,
         statusCell
       );
-
 
       currentAttendanceTable
         .appendChild(
@@ -1118,16 +942,10 @@ export function renderCombineResult(
   );
 
 }
-
-
-// --------------------------------------------------
 // Existing exports used by validation/tests
-// --------------------------------------------------
-
 export function catchStudenName() {
   return studentCount;
 }
-
 
 export function testingMaterials() {
   return rawScannedOcr;
