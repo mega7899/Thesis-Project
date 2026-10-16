@@ -5,18 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest --coverage",
     "build": "vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
-    "chart.js": "^4.5.1",
-    "image-filter-js": "^1.0.1",
+    "@vitest/coverage-v8": "^5.0.3",
+    "happy-dom": "^20.14.6",
     "sass": "^1.99.0",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "fuzzball": "^2.2.6",
+    "image-filter-js": "^1.0.1",
     "tesseract.js": "^7.0.0",
     "vite": "^8.0.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
-  },
-  "dependencies": {
-    "fuzzball": "^2.2.6"
   }
 }

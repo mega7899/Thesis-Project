@@ -16,7 +16,7 @@
 
 # Project Name: Automated Student Attendance Recording System (Image-Based Face and Name Recognition)
 
-# Test Date: October 6, 2026
+# 06/10/2026 Bug fixes, & Problem
 
 # Module Under Test: OCR Text Extraction, Pattern Matching, and Data Binding
 
@@ -42,18 +42,18 @@
 # 3. Pending Test Cases & Known Limitations
 
 1. **Multi-Image Batch Execution (Unverified)**:
-  **Test Case ID:** `TC-BATCH-01`
+  **Test Case ID:** `BATCH-01`
   **Status:** Pending
   **Note:** Dual-screenshot processing (evaluating two Zoom screenshots simultaneously) has not yet undergone validation testing.
 
 
 2. **Analytics Visualization Rendering (Incomplete):**
- **Test Case ID:** `TC-VIZ-01`
+ **Test Case ID:** `BATCH-02`
  **Status:** Blocked / In Progress
  **Note:** Chart.js integration for visual analytics reporting is built but not yet bound to execution outputs.
 
 
 3. **Runtime Persistence & Deployment (Pending):**
- **Test Case ID:** `TC-ENV-01`
+ **Test Case ID:** `BATCH-03`
  **Status:** Outstanding
  **Note:** Server environment configuration for continuous execution and session state persistence remains unassigned.
