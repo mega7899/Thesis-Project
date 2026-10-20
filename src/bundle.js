@@ -1,9 +1,8 @@
 // main.js
-import "../styles/style.scss";
-import "../src/chart";
-import "../src/processImage";
-import '../src/studentRegister';
-import "../src/validation";
+import "./chart.js";
+import "./Ocr-Folder/processImage.js";
+import "./Compiler-Folder/studentRegister.js";
+import "./Compiler-Folder/validation.js";
 
 // INTERACTABILITY
 // Menu button navigation
