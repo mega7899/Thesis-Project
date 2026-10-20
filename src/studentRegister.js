@@ -31,11 +31,7 @@ async function processMasterlistWorkbook() {
     const workbook = read(fileArrayBuffer);
     const firstWorksheet = workbook.Sheets[workbook.SheetNames[0]];
 
-    // `range: 1` skips only the header row and reads every row that actually has
-    // data, however many students there are. The old hardcoded 'A2:B6' assumed
-    // exactly 5 rows — any class roster shorter than that (or a blank Section
-    // cell inside that range) produced a row with no index [1], which is what
-    // crashed on row[1].slice(9). A roster longer than 5 was silently truncated.
+    //Chooses the first worksheet and skips the header of the two column
     const parsedSheetData = utils.sheet_to_json(firstWorksheet, { header: 1, range: 1 });
 
     console.log(parsedSheetData);

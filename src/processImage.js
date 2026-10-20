@@ -18,59 +18,29 @@ const studentCount = [];
 
 let rawScannedOcr;
 
-// Screenshot upload
+//Testing Materials
+let extractedOcr;
 
+// Run the program, When the button is clicked
 if (submitScreenshotBtn) {
+  submitScreenshotBtn.addEventListener("click", () => {
+    console.log("The button has been clicked pls wait.");
 
-  submitScreenshotBtn.addEventListener(
-    "click",
-    () => {
-
-      console.log(
-        "Screenshot processing started."
-      );
-
-      if (!screenshotFileInput?.files[0]) {
-
-        console.warn(
-          "No Zoom screenshot selected."
-        );
-
-        return;
-      }
-
-      prepareImageOnCanvas(
-        screenshotFileInput
-      );
-
+    let activeImageFile;
+    if (screenshotFileInput.files[0]) {
+      activeImageFile = prepareImageOnCanvas(screenshotFileInput);
+    } else if (alternativeScreenshotInput.files[0]) {
+      activeImageFile = prepareImageOnCanvas(alternativeScreenshotInput);
     }
-  );
-
+  });
 }
-// Load screenshot
-
-function prepareImageOnCanvas(
-  fileInputElement
-) {
-
-  const imageFile =
-    fileInputElement.files[0];
-
-  const fileReader =
-    new FileReader();
-
-  const processingCanvas =
-    document.createElement("canvas");
-
-  const canvasContext =
-    processingCanvas.getContext("2d");
-
-  const imageElement =
-    document.createElement("img");
-
-  fileReader.readAsDataURL(
-    imageFile
-  );
+// Pre-process image
+function prepareImageOnCanvas(fileInputElement) {
+  const imageFile = fileInputElement.files[0];
+  const fileReader = new FileReader();
+  const processingCanvas = document.createElement("canvas");
+  const canvasContext = processingCanvas.getContext("2d");
+  const imageElement = document.createElement("img");
 
   fileReader.onload = () => {
 
@@ -118,39 +88,29 @@ function prepareImageOnCanvas(
 
 }
 
-// Main OCR + face pipeline
+// invert image file to white and text to black
+function runOcrAnalysis(canvasSource) {
+  console.log("preprocess is working.");
 
-async function runOcrAnalysis(
-  canvasSource,
-  originalImage
-) {
+  (async () => {
+    const ocrWorker = await createWorker("eng");
+    const ocrResult = await ocrWorker.recognize(canvasSource);
+    const extractedText = ocrResult.data.text;
+    extractedOcr = extractedText;    
+    extractingNames(extractedText);
+    await ocrWorker.terminate();
+    console.log("the program has stopped.");
+  })();
+}
 
-  console.log(
-    "OCR processing started."
-  );
+function extractingNames(text) {
+  console.log(typeof extractedOcr);
+  const regexPattern = /[A-Z]\d{3,4}[_\s]+[A-Z]/gi;
+  const matchText = [...text.matchAll(regexPattern)];
 
-  const ocrWorker =
-    await createWorker("eng");
-
-  try {
-
-    const ocrResult =
-      await ocrWorker.recognize(
-        canvasSource,
-        {},
-        {
-          blocks: true
-        }
-      );
-
-
-    rawScannedOcr =
-      ocrResult.data.text;
-
-    const blocks =
-      ocrResult.data.blocks || [];
-
-    // extract OCR words and arrange candidate Zoom name labels
+  if (matchText.length > 0) {
+    const startIndex = matchText[0].index; 
+    const lastMatchIndex = matchText[matchText.length - 1].index;
     
     const candidateLabels =
       extractCandidateLabels(
@@ -363,348 +323,18 @@ async function runOcrAnalysis(
 
 }
 
-// OCR word extraction
-
-function extractOcrWords(
-  blocks
-) {
-  const words = [];
-
-  blocks.forEach(
-    block => {
-
-      block.paragraphs?.forEach(
-        paragraph => {
-
-          paragraph.lines?.forEach(
-            line => {
-
-              line.words?.forEach(
-                word => {
-
-                  const text =
-                    word.text?.trim();
-
-
-                  if (
-                    !text ||
-                    !word.bbox
-                  ) {
-                    return;
-                  }
-
-
-                  words.push({
-
-                    text:
-                      text,
-
-                    bbox:
-                      word.bbox,
-
-                    centerY:
-                      (
-                        word.bbox.y0 +
-                        word.bbox.y1
-                      ) / 2,
-
-                    height:
-                      word.bbox.y1 -
-                      word.bbox.y0
-
-                  });
-
-                }
-              );
-
-            }
-          );
-
-        }
-      );
-
-    }
-  );
-
-
-  return words;
-}
-
-// Group OCR words into visual rows
-
-function groupWordsIntoRows(
-  words
-) {
-
-  if (!words.length) {
-    return [];
-  }
-
-  const sorted =
-    [...words].sort(
-      (a, b) =>
-        a.centerY -
-        b.centerY ||
-        a.bbox.x0 -
-        b.bbox.x0
-    );
-
-  const rows = [];
-
-  sorted.forEach(
-    word => {
-
-      let targetRow = null;
-
-      for (
-        const row of rows
-      ) {
-
-        const tolerance =
-          Math.max(
-            12,
-            word.height * 1.5
-          );
-
-        if (
-          Math.abs(
-            word.centerY -
-            row.centerY
-          ) <= tolerance
-        ) {
-
-          targetRow = row;
-
-          break;
-        }
-
-      }
-
-      if (!targetRow) {
-
-        rows.push({
-
-          centerY:
-            word.centerY,
-
-          words:
-            [word]
-
-        });
-
-
-        return;
-      }
-
-      targetRow.words.push(
-        word
-      );
-
-      targetRow.centerY =
-        targetRow.words.reduce(
-          (sum, item) =>
-            sum +
-            item.centerY,
-          0
-        ) /
-        targetRow.words.length;
-
-    }
-  );
-
-
-  return rows;
-}
-
-// Split each OCR row into separate Zoom labels
-
-function splitRowIntoLabels(
-  row
-) {
-
-  const words =
-    [...row.words].sort(
-      (a, b) =>
-        a.bbox.x0 -
-        b.bbox.x0
-    );
-
-
-  if (!words.length) {
-    return [];
-  }
-
-  const averageHeight =
-    words.reduce(
-      (sum, word) =>
-        sum +
-        word.height,
-      0
-    ) /
-    words.length;
-
-  const gapThreshold =
-    Math.max(
-      35,
-      averageHeight * 3
-    );
-
-  const groups = [];
-
-  let currentGroup =
-    [words[0]];
-
-  for (
-    let index = 1;
-    index < words.length;
-    index++
-  ) {
-
-    const previous =
-      words[index - 1];
-
-    const current =
-      words[index];
-
-    const horizontalGap =
-      current.bbox.x0 -
-      previous.bbox.x1;
-
-    if (
-      horizontalGap >
-      gapThreshold
-    ) {
-
-      groups.push(
-        currentGroup
-      );
-
-      currentGroup =
-        [current];
-
-    }
-
-    else {
-
-      currentGroup.push(
-        current
-      );
-
-    }
-
-  }
-
-  groups.push(
-    currentGroup
-  );
-
-  return groups.map(
-    group => ({
-
-      text:
-        group
-          .map(
-            word =>
-              word.text
-          )
-          .join(" ")
-          .trim(),
-
-      bbox: {
-
-        x0:
-          Math.min(
-            ...group.map(
-              word =>
-                word.bbox.x0
-            )
-          ),
-
-        y0:
-          Math.min(
-            ...group.map(
-              word =>
-                word.bbox.y0
-            )
-          ),
-
-        x1:
-          Math.max(
-            ...group.map(
-              word =>
-                word.bbox.x1
-            )
-          ),
-
-        y1:
-          Math.max(
-            ...group.map(
-              word =>
-                word.bbox.y1
-            )
-          )
-
-      }
-
-    })
-  );
-}
-
-// Candidate Zoom labels
-
-function extractCandidateLabels(
-  blocks
-) {
-
-  const words =
-    extractOcrWords(
-      blocks
-    );
-
-  const rows =
-    groupWordsIntoRows(
-      words
-    );
-
-  return rows.flatMap(
-    row =>
-      splitRowIntoLabels(
-        row
-      )
-  );
-}
-
-// Normalize OCR/masterlist names
-
-function normalizeForMatch(
-  value
-) {
-
-  return String(
-    value || ""
-  )
-
-    .toUpperCase()
-
-    .replace(
-      /[_,-]/g,
-      " "
-    )
-
-    .replace(
-      /[^A-Z0-9\s]/g,
-      " "
-    )
-
-    .replace(
-      /\s+/g,
-      " "
-    )
-
-    .trim();
-}
-
-// Match candidate Zoom labels to masterlist
+async function scanStudentName(text) {
+  // Dynamically import studentRegister only when OCR processing runs
+  const { getMasterlistData } = await import('./studentRegister.js');
+  const studentMasterlist = getMasterlistData();
+  
+  studentCount.length = 0;
+
+  const cleanText = text
+  .toUpperCase()
+  .replace(/[^A-Z0-9\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
 
 function matchCandidateLabelsToStudents(
   labels
@@ -714,12 +344,8 @@ function matchCandidateLabelsToStudents(
     getMasterlistData();
 
   const candidates = [];
-
-  labels.forEach(
-    (
-      label,
-      labelIndex
-    ) => {
+  for (let i = 0; i < studentMasterlist.length; i++) {
+    const student = studentMasterlist[i];
 
       const normalizedOcr =
         normalizeForMatch(
@@ -812,56 +438,24 @@ function matchCandidateLabelsToStudents(
   const claimedStudents =
     new Set();
 
-  const results = [];
+  candidates.sort((a, b) => b.score - a.score);
 
-  for (
-    const candidate
-    of candidates
-  ) {
+  const claimedStudentIndices = new Set();
+  const claimedOcrIndices = new Set();
 
-    if (
-
-      claimedLabels.has(
-        candidate.labelIndex
-      )
-
-      ||
-
-      claimedStudents.has(
-        candidate.studentIndex
-      )
-
-    ) {
-
+  for (const candidate of candidates) {
+    if (claimedStudentIndices.has(candidate.studentIndex) || claimedOcrIndices.has(candidate.ocrIndex)) {
       continue;
 
     }
 
-    claimedLabels.add(
-      candidate.labelIndex
-    );
+    claimedStudentIndices.add(candidate.studentIndex);
+    claimedOcrIndices.add(candidate.ocrIndex);
 
-    claimedStudents.add(
-      candidate.studentIndex
-    );
-
-    results.push({
-
-      name:
-        candidate.student.name,
-
-      sectionCode:
-        candidate.student.sectionCode,
-
-      matchScore:
-        candidate.score,
-
-      ocrText:
-        candidate.label.text,
-
-      bbox:
-        candidate.label.bbox
-
+    studentCount.push({
+      name: candidate.student.name,
+      sectionCode: candidate.student.sectionCode,
+      score: candidate.score
     });
 
   }
@@ -869,30 +463,15 @@ function matchCandidateLabelsToStudents(
   return results;
 }
 
-// Render Current Attendance
-
-export function renderCombineResult(
-  matchedData
-) {
-
-  const currentAttendanceTable =
-    document.getElementById(
-      "studentData"
-    );
-
-  if (
-    !currentAttendanceTable
-  ) {
-
-    console.warn(
-      "Target element #studentData was not found."
-    );
-
+// New DOM rendering function
+export function renderCombineResult(matchedData) {
+  const currentAttendanceTable = document.getElementById("studentData");
+  if (!currentAttendanceTable) {
+    console.warn("Target element #studentData was not found in the DOM.");
     return;
   }
 
-  currentAttendanceTable
-    .replaceChildren();
+  currentAttendanceTable.replaceChildren();
 
   matchedData.forEach(
     student => {
@@ -902,51 +481,16 @@ export function renderCombineResult(
           "tr"
         );
 
-      const sectionCell =
-        document.createElement(
-          "td"
-        );
-
-      const nameCell =
-        document.createElement(
-          "td"
-        );
-
-      const statusCell =
-        document.createElement(
-          "td"
-        );
-
-      sectionCell.textContent =
-        student.sectionCode ||
-        "N/A";
-
-      nameCell.textContent =
-        student.name;
-
-      statusCell.textContent =
-        "Present";
-
-      studentRow.append(
-        sectionCell,
-        nameCell,
-        statusCell
-      );
-
-      currentAttendanceTable
-        .appendChild(
-          studentRow
-        );
-
-    }
-  );
-
+    studentRow.append(sectionCell, nameCell, statusCell);
+    currentAttendanceTable.appendChild(studentRow);
+  });
 }
-// Existing exports used by validation/tests
+
+// Import Values
 export function catchStudenName() {
   return studentCount;
 }
 
-export function testingMaterials() {
-  return rawScannedOcr;
+export function testingMaterials(){
+  return extractedOcr;
 }
