@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Student Attendance Portal</title>
+    <link rel="stylesheet" href="/styles/studentPortal.scss" />
+  </head>
+
+  <body>
+    <aside class="student-sidebar">
+      <h2>Student Menu</h2>
+
+      <nav>
+        <button id="attendance-btn">Attendance</button>
+        <button id="logout-btn">Logout</button>
+      </nav>
+    </aside>
+
+    <main class="student-dashboard">
+      <h1>Student Attendance</h1>
+
+      <section class="attendance-section">
+        <h2>Attendance Today</h2>
+
+        <div class="attendance-card" id="attendance-today">
+          <p>Attendance information will appear here.</p>
+        </div>
+      </section>
+
+      <section class="attendance-section">
+        <h2>Attendance History</h2>
+
+        <div class="attendance-history" id="attendance-history">
+          <p>Previous attendance records will appear here.</p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/studentPortal.js"></script>
+    <script type="module" src="./src/webSocket-folder/socket.js"></script>
+  </body>
+</html>
