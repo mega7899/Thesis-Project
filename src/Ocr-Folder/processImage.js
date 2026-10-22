@@ -1,7 +1,9 @@
+//Import Functions That Came From The Installed Dependencies
 import { createWorker } from "tesseract.js";
 import { InvertFilter } from "image-filter-js";
 import { partial_ratio } from "fuzzball";
 
+//Import The Extracted Student Name, and Student Name That Came From Ocr
 import { getMasterlistData } from "../Compiler-Folder/studentRegister.js";
 import { detectFacesInRegions } from "../Face-Recognition-Folder/faceDetection.js";
 import { buildParticipantRegions } from "../Face-Recognition-Folder/layoutDetection.js";
@@ -286,10 +288,8 @@ function matchCandidateLabelsToStudents(labels) {
       }
     });
   });
-  /*
-   * Strongest matches get first claim
-   * on both the OCR label and student.
-   */
+
+   // Strongest matches get first claim on both the OCR label and student.
   candidates.sort((a, b) => b.score - a.score);
 
   const claimedLabels = new Set();
@@ -345,7 +345,7 @@ export function renderCombineResult(matchedData) {
   });
 }
 // Existing exports used by validation/tests
-export function catchStudenName() {
+export function catchStudentName() {
   return studentCount;
 }
 
