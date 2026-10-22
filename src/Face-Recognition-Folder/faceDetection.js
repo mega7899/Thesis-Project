@@ -2,29 +2,15 @@ import * as faceapi from 'face-api.js';
 
 let modelLoaded = false;
 
-
-/*
- * Loads the Tiny Face Detector model.
- */
+//Loads the Tiny Face Detector model.
 export async function loadFaceDetectionModel() {
-  if (modelLoaded) {
-    return;
-  }
-
+  if (modelLoaded) return;
   await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-
   modelLoaded = true;
-
   console.log('Face detection model loaded.');
 }
 
-
-/*
- * Detects every visible face inside an image.
- *
- * @param {HTMLImageElement | HTMLCanvasElement} imageSource
- * @returns {Promise<Array>}
- */
+//Detects every visible face inside an image.
 export async function detectFaces(imageSource) {
   await loadFaceDetectionModel();
 
@@ -156,18 +142,16 @@ export async function detectFacesInRegions(
 
   for (const region of participantRegions) {
 
-    /*
-     * shrink the participant region.
-     */
+    
+     //shrink the participant region.
     const horizontalPadding =
       region.width * 0.08;
 
     const topPadding =
       region.height * 0.05;
 
-    /*
-     * remove more space from the bottom where name label is placed.
-     */
+    
+     //remove more space from the bottom where name label is placed.
     const bottomPadding =
       region.height * 0.18;
 
@@ -191,9 +175,7 @@ export async function detectFacesInRegions(
       bottomPadding;
 
 
-    /*
-     * prevent invalid canvas sizes.
-     */
+     //prevent invalid canvas sizes.
     if (
       safeWidth <= 0 ||
       safeHeight <= 0
@@ -262,9 +244,7 @@ export async function detectFacesInRegions(
       hasFace:
         detections.length > 0,
 
-      /*
-       * temporary for debugging, use for checking if participant crop is correct.
-       */
+       //temporary for debugging, use for checking if participant crop is correct.
       detectionX:
         safeX,
 

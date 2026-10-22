@@ -128,7 +128,6 @@ export function buildParticipantRegions(
 
   
    //estimate participant height from vertical distance between Zoom labels.
-   
   const rowGaps = [];
 
   for (
@@ -153,7 +152,6 @@ export function buildParticipantRegions(
 
   
     //the row containing the most recognized students gives the best estimate of the Zoom column layout.
-
   const referenceRow =
     [...rows].sort(
       (a, b) =>
@@ -201,7 +199,6 @@ export function buildParticipantRegions(
   return labels.map(label => {
 
     // find which inferred column is closest to this name label.
-    
     let columnX =
       label.bbox.x0;
 
