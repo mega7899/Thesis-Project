@@ -1,54 +1,62 @@
+//Dom Id
 const attendanceToday = document.getElementById("attendance-today");
 const attendanceHistory = document.getElementById("attendance-history");
 const logoutBtn = document.getElementById("logout-btn");
 
-function renderTodayAttendance() {
-  attendanceToday.replaceChildren();
+//Establishing Connection With The WebSocket Server Made Inside Vite.
+const protocol = location.protocol === "https:" ? "wss" : "ws";
+const socket = new WebSocket(`${protocol}://${location.host}/ws`);
 
-  const date = document.createElement("p");
-  const section = document.createElement("p");
-  const status = document.createElement("p");
+//Checking Whenever The Websocket Server Has Opened
+socket.addEventListener("open", () => console.log("Client's connected"));
 
-  date.textContent = `Date: ${todayAttendance.date}`;
-  section.textContent = `Section: ${todayAttendance.section}`;
-  status.textContent = `Status: ${todayAttendance.status}`;
-
-  status.classList.add("attendance-status");
-  attendanceToday.append(date, section, status);
-}
-
-function renderAttendanceHistory() {
-  attendanceHistory.replaceChildren();
-
-  const table = document.createElement("table");
-  const headerRow = document.createElement("tr");
-  const dateHeader = document.createElement("th");
-  const statusHeader = document.createElement("th");
-
-  dateHeader.textContent = "Date";
-  statusHeader.textContent = "Status";
-
-  headerRow.append(dateHeader, statusHeader);
-  table.appendChild(headerRow);
-
-  attendanceRecords.forEach((record) => {
-    const row = document.createElement("tr");
-    const dateCell = document.createElement("td");
-    const statusCell = document.createElement("td");
-
-    dateCell.textContent = record.date;
-    statusCell.textContent = record.status;
-
-    row.append(dateCell, statusCell);
-    table.appendChild(row);
-  });
-
-  attendanceHistory.appendChild(table);
-}
+//Run This Code Block Whenever A Message Came From The Websocket Server
+socket.onmessage = (event) => {
+  try {
+    const atData = JSON.parse(event.data);
+    console.log(atData.masterlist);
+    //After Parsing Pass It To Render The Attendance Table
+    renderAttendance(atData);
+  } catch {
+    return;
+  }
+};
 
 logoutBtn?.addEventListener("click", () => {
   console.log("Logout clicked");
 });
 
-renderTodayAttendance();
-renderAttendanceHistory();
+//Render The Attendance Materials That Came From Teacher DashBoard
+function renderAttendance(data) {
+  const masterlist = data.masterlist || [];
+  const ocr = data.ocrAttendance || [];
+
+  // cleaned names of everyone the camera/OCR found
+  const pres = new Set(ocr.map((students) => normalizeName(students.name)));
+
+  const today = new Date().toLocaleDateString();
+
+  attendanceToday.replaceChildren();
+
+  masterlist.forEach((student) => {
+    const isPresent = pres.has(normalizeName(student.name));
+    const status = isPresent ? "Present" : "Absent";
+
+    const p = document.createElement("p");
+    p.textContent = `${today}: ${student.name}, ${student.sectionCode || "N/A"}, ${status}`;
+    attendanceToday.appendChild(p);
+  });
+}
+
+//Clean Student Name So It can Match With The Extracted OCR Student Name
+function normalizeName(name) {
+  return String(name || "")
+    .toUpperCase()
+    .replace(/[_,-]/g, " ")
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+//Run This Code Whenever The Websocket Serve Closes
+socket.addEventListener("close", () => console.log("Client's disconnected"));
