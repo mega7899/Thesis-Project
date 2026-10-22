@@ -1,7 +1,5 @@
-import { registry } from "chart.js";
-import { getMasterlistData } from "../Compiler-Folder/studentRegister";
-import { catchStudenName } from "../Ocr-Folder/processImage";
-import { sendToServer } from "../webSocket-folder/socket";
+import { getMasterlistData } from "./studentRegister";
+import { catchStudentName } from "../Ocr-Folder/processImage";
 import { utils, writeFile } from "xlsx";
 
 const combineBtn = document.getElementById("combineTable");
@@ -9,32 +7,36 @@ const combinedAttendanceTable = document.getElementById("combineSheetData");
 const exportExcelBtn = document.getElementById("exportTable");
 const shareData = document.getElementById("shareAttendance");
 
-const studentList = getMasterlistData() || [];
-const currentAttendance = catchStudenName() || [];
+const protocol = location.protocol === "https:" ? "wss" : "ws";
+const socket = new WebSocket(`${protocol}://${location.host}/ws`);
+
+socket.addEventListener("open", () => console.log("Client's connected"));
 
 combineBtn?.addEventListener("click", () => {
-  valueChecker();
   validatingData();
 });
 
 exportExcelBtn?.addEventListener("click", () => {
-  valueChecker();
   const newWorkbook = utils.table_to_book(combinedAttendanceTable);
   writeFile(newWorkbook, "SheetJSTable.xlsx");
 });
 
 shareData.addEventListener("click", () => {
-  valueChecker();
+  const masterList = getMasterlistData() || [];
+  const ocrAttendance = catchStudentName() || [];
 
-  const data = {
-    masterlist: studentList,
-    OcrList: currentAttendance,
-  };
+  function sendToServer() {
+    if (socket.readyState === WebSocket.OPEN) {
+      const data = {
+        masterlist: masterList,
+        ocrAttendance: ocrAttendance,
+      };
 
-  console.log(studentList);
-  console.log(currentAttendance);
+      socket.send(JSON.stringify(data));
+    }
+  }
 
-  sendToServer(JSON.stringify(data));
+  sendToServer();
 });
 
 function normalizeName(name) {
@@ -46,25 +48,21 @@ function normalizeName(name) {
     .trim();
 }
 
-function valueChecker() {
-  if (studentList.length === 0 && currentAttendance.length === 0) {
-    console.warn("There is no attendance created yet.");
-    return;
-  }
-}
-
 function validatingData() {
   combinedAttendanceTable.replaceChildren();
 
-  console.log(currentAttendance);
-  console.log(studentList);
+  const masterList = getMasterlistData() || [];
+  const ocrAttendance = catchStudentName() || [];
+
+  console.log(masterList);
+  console.log(ocrAttendance);
 
   const presentNames = new Set(
-    currentAttendance.map((student) => normalizeName(student.name)),
+    ocrAttendance.map((student) => normalizeName(student.name)),
   );
 
   //students in masterlist gets either present or absent
-  studentList.forEach((student) => {
+  masterList.forEach((student) => {
     const studentName = normalizeName(student.name);
     const isPresent = presentNames.has(studentName);
     const row = document.createElement("tr");
@@ -79,3 +77,5 @@ function validatingData() {
     combinedAttendanceTable.appendChild(row);
   });
 }
+
+socket.addEventListener("close", () => console.log("Client's disconnected"));
