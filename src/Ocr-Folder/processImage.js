@@ -9,13 +9,13 @@ import { detectFacesInRegions } from "../Face-Recognition-Folder/faceDetection.j
 import { buildParticipantRegions } from "../Face-Recognition-Folder/layoutDetection.js";
 
 // DOM
-const masterlistFiles = document.getElementById("masterList");
+const masterlistFileInput = document.getElementById("masterList");
 const screenshotFileInput = document.getElementById("screenShots");
 const submitScreenshotBtn = document.getElementById("send-screenShots");
 
 // Shared state
-const studentCount = [];
-let rawScannedOcr;
+const presentStudents = [];
+let ocrRawText;
 
 // Screenshot upload
 if (submitScreenshotBtn) {
@@ -24,7 +24,7 @@ if (submitScreenshotBtn) {
 
     if (!screenshotFileInput?.files[0])
       return console.warn("No Zoom screenshot selected.");
-    if (!masterlistFiles?.files[0])
+    if (!masterlistFileInput?.files[0])
       return console.warn("Upload Your MasterList First.");
 
     prepareImageOnCanvas(screenshotFileInput);
@@ -55,32 +55,32 @@ function prepareImageOnCanvas(fileInputElement) {
         processingCanvas.height,
       );
 
-      const filterInstance = new InvertFilter(processingCanvas);
-      filterInstance.process(imageElement);
-      await runOcrAnalysis(processingCanvas, imageElement);
+      const invertFilter = new InvertFilter(processingCanvas);
+      invertFilter.process(imageElement);
+      await runOcrAndFaceDetection(processingCanvas, imageElement);
     };
   };
 }
 
 // Main OCR + face pipeline
-async function runOcrAnalysis(canvasSource, originalImage) {
+async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage) {
   console.log("OCR processing started.");
   const ocrWorker = await createWorker("eng");
 
   try {
     const ocrResult = await ocrWorker.recognize(
-      canvasSource,
+      screenshotCanvas,
       {},
       {
         blocks: true,
       },
     );
 
-    rawScannedOcr = ocrResult.data.text;
-    const blocks = ocrResult.data.blocks || [];
+    ocrRawText = ocrResult.data.text;
+    const ocrBlocks = ocrResult.data.blocks || [];
 
     // extract OCR words and arrange candidate Zoom name labels
-    const candidateLabels = extractCandidateLabels(blocks);
+    const candidateLabels = extractCandidateLabels(ocrBlocks);
 
     // match Zoom labels to official students
     const matchedLabels = matchCandidateLabelsToStudents(candidateLabels);
@@ -88,39 +88,38 @@ async function runOcrAnalysis(canvasSource, originalImage) {
     //for debugging purposes, if nothing match it won't continue
     if (!matchedLabels.length) {
       console.warn("No Zoom participant names matched the masterlist.");
-      studentCount.length = 0;
-      renderCombineResult(studentCount);
+      presentStudents.length = 0;
+      renderCurrentAttendanceTable(presentStudents);
       return;
     }
 
     // finalize zoom participant regions dynamically
     const participantRegions = buildParticipantRegions(
       matchedLabels,
-      originalImage.naturalWidth,
-      originalImage.naturalHeight,
+      screenshotImage.naturalWidth,
+      screenshotImage.naturalHeight,
     );
 
     // run face-api on each participant
-    const participants = await detectFacesInRegions(
-      originalImage,
+    const participantFaceResults = await detectFacesInRegions(
+      screenshotImage,
       participantRegions,
     );
 
     //Current Attendance
-    studentCount.length = 0;
+    presentStudents.length = 0;
 
-    participants.forEach((participant) => {
+    participantFaceResults.forEach((participant) => {
       if (!participant.hasFace) return;
 
-      studentCount.push({
+      presentStudents.push({
         name: participant.name,
-        sectionCode: participant.sectionCode,
         score: participant.matchScore,
       });
     });
 
-    renderCombineResult(studentCount);
-    console.log("Current attendance:", studentCount);
+    renderCurrentAttendanceTable(presentStudents);
+    console.log("Current attendance:", presentStudents);
   } catch (error) {
     console.error("Failed to process Zoom screenshot:", error);
   } finally {
@@ -131,10 +130,10 @@ async function runOcrAnalysis(canvasSource, originalImage) {
 }
 
 // OCR word extraction
-function extractOcrWords(blocks) {
+function extractOcrWords(ocrBlocks) {
   const words = [];
 
-  blocks.forEach((block) => {
+  ocrBlocks.forEach((block) => {
     block.paragraphs?.forEach((paragraph) => {
       paragraph.lines?.forEach((line) => {
         line.words?.forEach((word) => {
@@ -160,19 +159,19 @@ function extractOcrWords(blocks) {
 function groupWordsIntoRows(words) {
   if (!words.length) return [];
 
-  const sorted = [...words].sort(
+  const sortedWords = [...words].sort(
     (a, b) => a.centerY - b.centerY || a.bbox.x0 - b.bbox.x0,
   );
 
   const rows = [];
 
-  sorted.forEach((word) => {
+  sortedWords.forEach((word) => {
     let targetRow = null;
 
     for (const row of rows) {
-      const tolerance = Math.max(12, word.height * 1.5);
+      const rowTolerance = Math.max(12, word.height * 1.5);
 
-      if (Math.abs(word.centerY - row.centerY) <= tolerance) {
+      if (Math.abs(word.centerY - row.centerY) <= rowTolerance) {
         targetRow = row;
         break;
       }
@@ -190,7 +189,7 @@ function groupWordsIntoRows(words) {
     targetRow.words.push(word);
 
     targetRow.centerY =
-      targetRow.words.reduce((sum, item) => sum + item.centerY, 0) /
+      targetRow.words.reduce((sum, rowWord) => sum + rowWord.centerY, 0) /
       targetRow.words.length;
   });
 
@@ -199,55 +198,55 @@ function groupWordsIntoRows(words) {
 
 // Split each OCR row into separate Zoom labels
 function splitRowIntoLabels(row) {
-  const words = [...row.words].sort((a, b) => a.bbox.x0 - b.bbox.x0);
+  const rowWords = [...row.words].sort((a, b) => a.bbox.x0 - b.bbox.x0);
 
-  if (!words.length) return [];
+  if (!rowWords.length) return [];
 
   const averageHeight =
-    words.reduce((sum, word) => sum + word.height, 0) / words.length;
+    rowWords.reduce((sum, word) => sum + word.height, 0) / rowWords.length;
 
-  const gapThreshold = Math.max(35, averageHeight * 3);
-  const groups = [];
-  let currentGroup = [words[0]];
+  const labelGapThreshold = Math.max(35, averageHeight * 3);
+  const labelGroups = [];
+  let currentLabelWords = [rowWords[0]];
 
-  for (let index = 1; index < words.length; index++) {
-    const previous = words[index - 1];
-    const current = words[index];
-    const horizontalGap = current.bbox.x0 - previous.bbox.x1;
+  for (let wordIndex = 1; wordIndex < rowWords.length; wordIndex++) {
+    const previousWord = rowWords[wordIndex - 1];
+    const currentWord = rowWords[wordIndex];
+    const horizontalGap = currentWord.bbox.x0 - previousWord.bbox.x1;
 
-    if (horizontalGap > gapThreshold) {
-      groups.push(currentGroup);
-      currentGroup = [current];
+    if (horizontalGap > labelGapThreshold) {
+      labelGroups.push(currentLabelWords);
+      currentLabelWords = [currentWord];
     } else {
-      currentGroup.push(current);
+      currentLabelWords.push(currentWord);
     }
   }
 
-  groups.push(currentGroup);
+  labelGroups.push(currentLabelWords);
 
-  return groups.map((group) => ({
-    text: group
+  return labelGroups.map((labelWords) => ({
+    text: labelWords
       .map((word) => word.text)
       .join(" ")
       .trim(),
 
     bbox: {
-      x0: Math.min(...group.map((word) => word.bbox.x0)),
-      y0: Math.min(...group.map((word) => word.bbox.y0)),
-      x1: Math.max(...group.map((word) => word.bbox.x1)),
-      y1: Math.max(...group.map((word) => word.bbox.y1)),
+      x0: Math.min(...labelWords.map((word) => word.bbox.x0)),
+      y0: Math.min(...labelWords.map((word) => word.bbox.y0)),
+      x1: Math.max(...labelWords.map((word) => word.bbox.x1)),
+      y1: Math.max(...labelWords.map((word) => word.bbox.y1)),
     },
   }));
 }
 
 // Candidate Zoom labels
-function extractCandidateLabels(blocks) {
-  const words = extractOcrWords(blocks);
-  const rows = groupWordsIntoRows(words);
-  return rows.flatMap((row) => splitRowIntoLabels(row));
+function extractCandidateLabels(ocrBlocks) {
+  const ocrWords = extractOcrWords(ocrBlocks);
+  const ocrRows = groupWordsIntoRows(ocrWords);
+  return ocrRows.flatMap((row) => splitRowIntoLabels(row));
 }
 
-function normalizedForMatch(name) {
+function normalizeName(name) {
   return String(name || "")
     .toUpperCase()
     .replace(/[_,-]/g, " ")
@@ -259,68 +258,72 @@ function normalizedForMatch(name) {
 // Match candidate Zoom labels to masterlist
 function matchCandidateLabelsToStudents(labels) {
   const masterlist = getMasterlistData();
-  const candidates = [];
+  const matchCandidates = [];
 
   labels.forEach((label, labelIndex) => {
-    const normalizedOcr = normalizedForMatch(label.text);
+    const normalizedLabelText = normalizeName(label.text);
 
-    if (normalizedOcr.length < 3) return;
+    if (normalizedLabelText.length < 3) return;
 
     masterlist.forEach((student, studentIndex) => {
-      const normalizedName = normalizedForMatch(student.name);
+      const normalizedStudentName = normalizeName(student.name);
 
-      const normalizedFullLabel = normalizedForMatch(
+      const normalizedSectionAndName = normalizeName(
         `${student.sectionCode} ${student.name}`,
       );
 
-      const nameScore = partial_ratio(normalizedOcr, normalizedName);
-      const completeScore = partial_ratio(normalizedOcr, normalizedFullLabel);
-      const score = Math.max(nameScore, completeScore);
+      const nameScore = partial_ratio(
+        normalizedLabelText,
+        normalizedStudentName,
+      );
+      const sectionAndNameScore = partial_ratio(
+        normalizedLabelText,
+        normalizedSectionAndName,
+      );
+      const bestScore = Math.max(nameScore, sectionAndNameScore);
 
-      if (score >= 60) {
-        candidates.push({
+      if (bestScore >= 60) {
+        matchCandidates.push({
           labelIndex: labelIndex,
           studentIndex: studentIndex,
           label: label,
           student: student,
-          score: score,
+          score: bestScore,
         });
       }
     });
   });
 
-   // Strongest matches get first claim on both the OCR label and student.
-  candidates.sort((a, b) => b.score - a.score);
+  // Strongest matches get first claim on both the OCR label and student.
+  matchCandidates.sort((a, b) => b.score - a.score);
 
-  const claimedLabels = new Set();
-  const claimedStudents = new Set();
-  const results = [];
+  const claimedLabelIndexes = new Set();
+  const claimedStudentIndexes = new Set();
+  const bestMatches = [];
 
-  for (const candidate of candidates) {
+  for (const candidate of matchCandidates) {
     if (
-      claimedLabels.has(candidate.labelIndex) ||
-      claimedStudents.has(candidate.studentIndex)
+      claimedLabelIndexes.has(candidate.labelIndex) ||
+      claimedStudentIndexes.has(candidate.studentIndex)
     ) {
       continue;
     }
 
-    claimedLabels.add(candidate.labelIndex);
-    claimedStudents.add(candidate.studentIndex);
+    claimedLabelIndexes.add(candidate.labelIndex);
+    claimedStudentIndexes.add(candidate.studentIndex);
 
-    results.push({
+    bestMatches.push({
       name: candidate.student.name,
-      sectionCode: candidate.student.sectionCode,
       matchScore: candidate.score,
       ocrText: candidate.label.text,
       bbox: candidate.label.bbox,
     });
   }
-
-  return results;
+  return bestMatches;
 }
 
 // Render Current Attendance
-export function renderCombineResult(matchedData) {
+export function renderCurrentAttendanceTable(presentStudentList) {
   const currentAttendanceTable = document.getElementById("studentData");
 
   if (!currentAttendanceTable) {
@@ -330,25 +333,23 @@ export function renderCombineResult(matchedData) {
 
   currentAttendanceTable.replaceChildren();
 
-  matchedData.forEach((student) => {
+  presentStudentList.forEach((student) => {
     const studentRow = document.createElement("tr");
-    const sectionCell = document.createElement("td");
     const nameCell = document.createElement("td");
     const statusCell = document.createElement("td");
 
-    sectionCell.textContent = student.sectionCode || "N/A";
     nameCell.textContent = student.name;
     statusCell.textContent = "Present";
 
-    studentRow.append(sectionCell, nameCell, statusCell);
+    studentRow.append(nameCell, statusCell);
     currentAttendanceTable.appendChild(studentRow);
   });
 }
 // Existing exports used by validation/tests
-export function catchStudentName() {
-  return studentCount;
+export function getPresentStudents() {
+  return presentStudents;
 }
 
-export function testingMaterials() {
-  return rawScannedOcr;
+export function getOcrRawText() {
+  return ocrRawText;
 }
