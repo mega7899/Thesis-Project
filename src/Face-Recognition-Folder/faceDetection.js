@@ -1,12 +1,12 @@
 import * as faceapi from 'face-api.js';
 
-let modelLoaded = false;
+let isFaceModelLoaded = false;
 
 //Loads the Tiny Face Detector model.
 export async function loadFaceDetectionModel() {
-  if (modelLoaded) return;
+  if (isFaceModelLoaded) return;
   await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-  modelLoaded = true;
+  isFaceModelLoaded = true;
   console.log('Face detection model loaded.');
 }
 
@@ -20,17 +20,17 @@ export async function detectFaces(imageSource) {
       scoreThreshold: 0.5
     });
 
-  const detections =
+  const detectedFaces =
     await faceapi.detectAllFaces(
       imageSource,
       detectorOptions
     );
 
   console.log(
-    `Detected ${detections.length} face(s).`
+    `Detected ${detectedFaces.length} face(s).`
   );
 
-  return detections;
+  return detectedFaces;
 }
 
 export async function detectFacesInGrid(imageSource, gridConfig) {
@@ -48,7 +48,7 @@ export async function detectFacesInGrid(imageSource, gridConfig) {
   const tileWidth = width / columns;
   const tileHeight = height / rows;
 
-  const results = [];
+  const tileResults = [];
 
   const tileCanvas = document.createElement('canvas');
   const tileContext = tileCanvas.getContext('2d');
@@ -62,12 +62,12 @@ export async function detectFacesInGrid(imageSource, gridConfig) {
       scoreThreshold: 0.25
     });
 
-  for (let row = 0; row < rows; row++) {
+  for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
 
-    for (let column = 0; column < columns; column++) {
+    for (let columnIndex = 0; columnIndex < columns; columnIndex++) {
 
-      const sourceX = startX + (column * tileWidth);
-      const sourceY = startY + (row * tileHeight);
+      const sourceX = startX + (columnIndex * tileWidth);
+      const sourceY = startY + (rowIndex * tileHeight);
 
       tileContext.clearRect(
         0,
@@ -90,29 +90,29 @@ export async function detectFacesInGrid(imageSource, gridConfig) {
         tileCanvas.height
       );
 
-      const detections =
+      const detectedFaces =
         await faceapi.detectAllFaces(
           tileCanvas,
           detectorOptions
         );
 
-      results.push({
-        row: row,
-        column: column,
-        tileNumber: (row * columns) + column + 1,
+      tileResults.push({
+        row: rowIndex,
+        column: columnIndex,
+        tileNumber: (rowIndex * columns) + columnIndex + 1,
 
         sourceX: sourceX,
         sourceY: sourceY,
         tileWidth: tileWidth,
         tileHeight: tileHeight,
 
-        faceCount: detections.length,
-        hasFace: detections.length > 0
+        faceCount: detectedFaces.length,
+        hasFace: detectedFaces.length > 0
       });
     }
   }
 
-  return results;
+  return tileResults;
 }
 
 export async function detectFacesInRegions(
@@ -130,14 +130,14 @@ export async function detectFacesInRegions(
     });
 
 
-  const canvas =
+  const cropCanvas =
     document.createElement("canvas");
 
-  const context =
-    canvas.getContext("2d");
+  const cropContext =
+    cropCanvas.getContext("2d");
 
 
-  const results = [];
+  const regionResults = [];
 
 
   for (const region of participantRegions) {
@@ -156,20 +156,20 @@ export async function detectFacesInRegions(
       region.height * 0.18;
 
 
-    const safeX =
+    const cropX =
       region.sourceX +
       horizontalPadding;
 
-    const safeY =
+    const cropY =
       region.sourceY +
       topPadding;
 
 
-    const safeWidth =
+    const cropWidth =
       region.width -
       (horizontalPadding * 2);
 
-    const safeHeight =
+    const cropHeight =
       region.height -
       topPadding -
       bottomPadding;
@@ -177,11 +177,11 @@ export async function detectFacesInRegions(
 
      //prevent invalid canvas sizes.
     if (
-      safeWidth <= 0 ||
-      safeHeight <= 0
+      cropWidth <= 0 ||
+      cropHeight <= 0
     ) {
 
-      results.push({
+      regionResults.push({
         ...region,
 
         faceCount: 0,
@@ -192,74 +192,74 @@ export async function detectFacesInRegions(
     }
 
 
-    canvas.width =
+    cropCanvas.width =
       Math.max(
         1,
-        Math.round(safeWidth)
+        Math.round(cropWidth)
       );
 
-    canvas.height =
+    cropCanvas.height =
       Math.max(
         1,
-        Math.round(safeHeight)
+        Math.round(cropHeight)
       );
 
 
-    context.clearRect(
+    cropContext.clearRect(
       0,
       0,
-      canvas.width,
-      canvas.height
+      cropCanvas.width,
+      cropCanvas.height
     );
 
 
-    context.drawImage(
+    cropContext.drawImage(
       imageSource,
 
-      safeX,
-      safeY,
-      safeWidth,
-      safeHeight,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
 
       0,
       0,
-      canvas.width,
-      canvas.height
+      cropCanvas.width,
+      cropCanvas.height
     );
 
 
-    const detections =
+    const detectedFaces =
       await faceapi.detectAllFaces(
-        canvas,
+        cropCanvas,
         detectorOptions
       );
 
 
-    results.push({
+    regionResults.push({
       ...region,
 
       faceCount:
-        detections.length,
+        detectedFaces.length,
 
       hasFace:
-        detections.length > 0,
+        detectedFaces.length > 0,
 
        //temporary for debugging, use for checking if participant crop is correct.
       detectionX:
-        safeX,
+        cropX,
 
       detectionY:
-        safeY,
+        cropY,
 
       detectionWidth:
-        safeWidth,
+        cropWidth,
 
       detectionHeight:
-        safeHeight
+        cropHeight
     });
 
   }
 
 
-  return results;
+  return regionResults;
 }

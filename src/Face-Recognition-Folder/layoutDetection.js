@@ -3,17 +3,17 @@ function median(values) {
     return 0;
   }
 
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
+  const sortedValues = [...values].sort((a, b) => a - b);
+  const middleIndex = Math.floor(sortedValues.length / 2);
 
-  if (sorted.length % 2 === 0) {
+  if (sortedValues.length % 2 === 0) {
     return (
-      sorted[middle - 1] +
-      sorted[middle]
+      sortedValues[middleIndex - 1] +
+      sortedValues[middleIndex]
     ) / 2;
   }
 
-  return sorted[middle];
+  return sortedValues[middleIndex];
 }
 
 
@@ -30,7 +30,7 @@ function clusterIntoRows(labels) {
     return [];
   }
 
-  const lineHeights =
+  const labelHeights =
     labels.map(label =>
       label.bbox.y1 -
       label.bbox.y0
@@ -39,11 +39,11 @@ function clusterIntoRows(labels) {
   const rowTolerance =
     Math.max(
       12,
-      median(lineHeights) * 2
+      median(labelHeights) * 2
     );
 
 
-  const sorted =
+  const labelsTopToBottom =
     [...labels].sort(
       (a, b) =>
         getCenterY(a) -
@@ -54,9 +54,9 @@ function clusterIntoRows(labels) {
   const rows = [];
 
 
-  sorted.forEach(label => {
+  labelsTopToBottom.forEach(label => {
 
-    const centerY =
+    const labelCenterY =
       getCenterY(label);
 
 
@@ -67,7 +67,7 @@ function clusterIntoRows(labels) {
 
       if (
         Math.abs(
-          centerY - row.centerY
+          labelCenterY - row.centerY
         ) <= rowTolerance
       ) {
 
@@ -81,7 +81,7 @@ function clusterIntoRows(labels) {
     if (!targetRow) {
 
       rows.push({
-        centerY: centerY,
+        centerY: labelCenterY,
         labels: [label]
       });
 
@@ -94,8 +94,8 @@ function clusterIntoRows(labels) {
 
     targetRow.centerY =
       targetRow.labels.reduce(
-        (sum, item) =>
-          sum + getCenterY(item),
+        (sum, rowLabel) =>
+          sum + getCenterY(rowLabel),
         0
       ) /
       targetRow.labels.length;
@@ -131,14 +131,14 @@ export function buildParticipantRegions(
   const rowGaps = [];
 
   for (
-    let i = 1;
-    i < rows.length;
-    i++
+    let rowIndex = 1;
+    rowIndex < rows.length;
+    rowIndex++
   ) {
 
     rowGaps.push(
-      rows[i].centerY -
-      rows[i - 1].centerY
+      rows[rowIndex].centerY -
+      rows[rowIndex - 1].centerY
     );
 
   }
@@ -171,14 +171,14 @@ export function buildParticipantRegions(
   const horizontalGaps = [];
 
   for (
-    let i = 1;
-    i < referenceLabels.length;
-    i++
+    let labelIndex = 1;
+    labelIndex < referenceLabels.length;
+    labelIndex++
   ) {
 
     horizontalGaps.push(
-      referenceLabels[i].bbox.x0 -
-      referenceLabels[i - 1].bbox.x0
+      referenceLabels[labelIndex].bbox.x0 -
+      referenceLabels[labelIndex - 1].bbox.x0
     );
 
   }
@@ -199,17 +199,17 @@ export function buildParticipantRegions(
   return labels.map(label => {
 
     // find which inferred column is closest to this name label.
-    let columnX =
+    let closestColumnX =
       label.bbox.x0;
 
 
     if (columnAnchors.length) {
 
-      columnX =
+      closestColumnX =
         columnAnchors.reduce(
           (closest, anchor) => {
 
-            const currentDifference =
+            const anchorDifference =
               Math.abs(
                 anchor -
                 label.bbox.x0
@@ -222,7 +222,7 @@ export function buildParticipantRegions(
               );
 
 
-            return currentDifference <
+            return anchorDifference <
               closestDifference
               ? anchor
               : closest;
@@ -234,7 +234,7 @@ export function buildParticipantRegions(
     }
 
 
-    const textHeight =
+    const labelTextHeight =
       label.bbox.y1 -
       label.bbox.y0;
 
@@ -244,7 +244,7 @@ export function buildParticipantRegions(
         label.bbox.y1 +
           Math.max(
             6,
-            textHeight * 0.8
+            labelTextHeight * 0.8
           )
       );
 
@@ -252,7 +252,7 @@ export function buildParticipantRegions(
     const sourceX =
       Math.max(
         0,
-        columnX -
+        closestColumnX -
           estimatedTileWidth * 0.02
       );
 
