@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest --coverage",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -18,9 +19,10 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.4",
     "face-api.js": "^0.22.2",
     "fuzzball": "^2.2.6",
-    "ws": "^8.22.0",
-    "sass": "^1.99.0"
+    "sass": "^1.99.0",
+    "ws": "^8.22.0"
   }
 }

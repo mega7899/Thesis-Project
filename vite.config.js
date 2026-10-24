@@ -13,40 +13,40 @@ function websocketPlugin() {
       if (!viteServer.httpServer) return;
 
       // This will let ws share Vite's port instead of opening its own.
-      const wss = new WebSocketServer({ noServer: true });
+      const socketServer = new WebSocketServer({ noServer: true });
 
       // Somebody connected.
-      wss.on("connection", (socket) => {
-        console.log("[ws] client connected. Total:", wss.clients.size);
+      socketServer.on("connection", (clientSocket) => {
+        console.log("[ws] client connected. Total:", socketServer.clients.size);
 
         // Somebody sent a message -> pass it to everyone else.
-        socket.on("message", (data, isBinary) => {
-          for (const client of wss.clients) {
-            if (client !== socket && client.readyState === 1) {
-              client.send(data, { binary: isBinary });
+        clientSocket.on("message", (messageData, isBinary) => {
+          for (const otherClient of socketServer.clients) {
+            if (otherClient !== clientSocket && otherClient.readyState === 1) {
+              otherClient.send(messageData, { binary: isBinary });
             }
           }
         });
 
-        socket.on("close", () => {
-          console.log("[ws] client left. Total:", wss.clients.size);
+        clientSocket.on("close", () => {
+          console.log("[ws] client left. Total:", socketServer.clients.size);
         });
 
-        socket.send("Connected to the ws server!");
+        clientSocket.send("Connected to the ws server!");
       });
 
       // The browser asks to "upgrade" a normal HTTP request into a WebSocket.
       // Only accept the path /ws, so Vite's own hot-reload socket keeps working.
-      viteServer.httpServer.on("upgrade", (request, socket, head) => {
+      viteServer.httpServer.on("upgrade", (request, rawSocket, upgradeHead) => {
         if (request.url !== "/ws") return;
 
-        wss.handleUpgrade(request, socket, head, (ws) => {
-          wss.emit("connection", ws, request);
+        socketServer.handleUpgrade(request, rawSocket, upgradeHead, (upgradedSocket) => {
+          socketServer.emit("connection", upgradedSocket, request);
         });
       });
 
       // Clean shutdown when Vite stops.
-      viteServer.httpServer.on("close", () => wss.close());
+      viteServer.httpServer.on("close", () => socketServer.close());
     },
   };
 }
