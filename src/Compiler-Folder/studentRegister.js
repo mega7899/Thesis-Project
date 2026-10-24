@@ -1,17 +1,17 @@
 import { utils, writeFileXLSX, read, writeFile } from "xlsx";
 
-const zoomList = document.getElementById("screenShots");
+const screenshotFileInput = document.getElementById("screenShots");
 const masterlistFileInput = document.getElementById("masterList");
-const submitMasterlist = document.getElementById("send-btn");
-const studentList = document.getElementById("masterData");
+const submitMasterlistBtn = document.getElementById("send-btn");
+const masterlistTableBody = document.getElementById("masterData");
 
 let parsedMasterlist = [];
 
-if (submitMasterlist) {
-  submitMasterlist.addEventListener("click", () => {
+if (submitMasterlistBtn) {
+  submitMasterlistBtn.addEventListener("click", () => {
     console.log("The button has been clicked!");
 
-    if (!zoomList.files[0]) return console.warn("Submit your zoom screenShot.");
+    if (!screenshotFileInput.files[0]) return console.warn("Submit your zoom screenShot.");
 
     processMasterlistWorkbook();
   });
@@ -28,61 +28,48 @@ async function processMasterlistWorkbook() {
   parsedMasterlist = []; // reset deterministically here, not in the click handler
 
   try {
-    const uploadedFile = masterlistFileInput.files[0];
-    const fileArrayBuffer = await uploadedFile.arrayBuffer();
+    const masterlistFile = masterlistFileInput.files[0];
+    const fileArrayBuffer = await masterlistFile.arrayBuffer();
     const workbook = read(fileArrayBuffer);
     const firstWorksheet = workbook.Sheets[workbook.SheetNames[0]];
 
     // skips only the header row and reads every row that actually has string
-    const parsedSheetData = utils.sheet_to_json(firstWorksheet, {
-      header: 1,
-      range: 1,
+    const sheetRows = utils.sheet_to_json(firstWorksheet, {
+      header: 2,
+      range: 9,
     });
-    console.log(parsedSheetData);
+    console.log(sheetRows);
 
-    // Checks Each row of parsedSheetData() Array For Student Section, LastName, & FirstName
-    parsedSheetData.forEach((row) => {
-      const section = row[0] !== undefined ? String(row[0]).trim() : "";
-      const lastName = row[1] !== undefined ? String(row[1]).trim() : "";
-      const firstName = row[2] !== undefined ? String(row[2]).trim() : "";
+    sheetRows.forEach((sheetRow) => {
+      const rawName = sheetRow.Name;
+      const trimmedName = rawName !== undefined ? String(rawName.trim()) : "";
 
-      // A student must at least have a last name.
-      if (!lastName) {
-        console.warn("Skipping masterlist row without a last name:", row);
+      if (trimmedName === "") {
         return;
+      } else {
+        parsedMasterlist.push({
+          name: trimmedName,
+        });
       }
-
-      // Match the format used by the Zoom names:
-      const studentName = firstName ? `${lastName}, ${firstName}` : lastName;
-
-      parsedMasterlist.push({
-        name: studentName,
-        lastName: lastName,
-        firstName: firstName,
-        sectionCode: section || "N/A",
-      });
     });
-
-    renderStudentList();
-    console.table(parsedMasterlist);
+     renderStudentList();
   } catch (error) {
     console.error("Failed to process masterlist workbook:", error);
   }
 }
 
 function renderStudentList() {
-  if (!studentList) return;
-  studentList.replaceChildren();
+  if (!masterlistTableBody) return;
+  masterlistTableBody.replaceChildren();
 
   parsedMasterlist.forEach((student) => {
-    const studentRow = document.createElement("tr");
-    const sectionCell = document.createElement("td");
-    const nameCell = document.createElement("td");
+    if (student.name === "") return;
 
-    sectionCell.textContent = student.sectionCode || "N/A";
+    const studentRow = document.createElement("tr");
+    const nameCell = document.createElement("td");
     nameCell.textContent = student.name;
-    studentRow.append(sectionCell, nameCell);
-    studentList.appendChild(studentRow);
+    studentRow.append(nameCell);
+    masterlistTableBody.appendChild(studentRow);
   });
 }
 

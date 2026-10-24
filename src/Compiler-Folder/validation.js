@@ -1,42 +1,45 @@
 import { getMasterlistData } from "./studentRegister";
-import { catchStudentName } from "../Ocr-Folder/processImage";
-import { utils, writeFile } from "xlsx";
+import { getPresentStudents } from "../Ocr-Folder/processImage";
+import { utils, writeFile, read } from "xlsx";
 
-const combineBtn = document.getElementById("combineTable");
+const combineTableBtn = document.getElementById("combineTable");
 const combinedAttendanceTable = document.getElementById("combineSheetData");
 const exportExcelBtn = document.getElementById("exportTable");
-const shareData = document.getElementById("shareAttendance");
+const shareAttendanceBtn = document.getElementById("shareAttendance");
+const masterlistFileInput = document.getElementById("masterList");
 
-const protocol = location.protocol === "https:" ? "wss" : "ws";
-const socket = new WebSocket(`${protocol}://${location.host}/ws`);
+const webSocketProtocol = location.protocol === "https:" ? "wss" : "ws";
+const attendanceSocket = new WebSocket(
+  `${webSocketProtocol}://${location.host}/ws`,
+);
 
-socket.addEventListener("open", () => console.log("Client's connected"));
+attendanceSocket.addEventListener("open", () =>
+  console.log("Teacher's dashboard connected"),
+);
 
-combineBtn?.addEventListener("click", () => {
-  validatingData();
+combineTableBtn?.addEventListener("click", () => {
+  renderCombinedAttendanceTable();
 });
 
 exportExcelBtn?.addEventListener("click", () => {
-  const newWorkbook = utils.table_to_book(combinedAttendanceTable);
-  writeFile(newWorkbook, "SheetJSTable.xlsx");
+  exportAttendanceSpreadsheet();
 });
 
-shareData.addEventListener("click", () => {
-  const masterList = getMasterlistData() || [];
-  const ocrAttendance = catchStudentName() || [];
+shareAttendanceBtn.addEventListener("click", () => {
+  const masterlistStudents = getMasterlistData() || [];
+  const presentStudents = getPresentStudents() || [];
 
-  function sendToServer() {
-    if (socket.readyState === WebSocket.OPEN) {
-      const data = {
-        masterlist: masterList,
-        ocrAttendance: ocrAttendance,
+  function sendAttendanceToServer() {
+    if (attendanceSocket.readyState === WebSocket.OPEN) {
+      const attendancePayload = {
+        masterlist: masterlistStudents,
+        ocrAttendance: presentStudents,
       };
 
-      socket.send(JSON.stringify(data));
+      attendanceSocket.send(JSON.stringify(attendancePayload));
     }
   }
-
-  sendToServer();
+  sendAttendanceToServer();
 });
 
 function normalizeName(name) {
@@ -48,34 +51,82 @@ function normalizeName(name) {
     .trim();
 }
 
-function validatingData() {
+function renderCombinedAttendanceTable() {
   combinedAttendanceTable.replaceChildren();
 
-  const masterList = getMasterlistData() || [];
-  const ocrAttendance = catchStudentName() || [];
+  const masterlistStudents = getMasterlistData() || [];
+  const presentStudents = getPresentStudents() || [];
 
-  console.log(masterList);
-  console.log(ocrAttendance);
+  console.log(masterlistStudents);
+  console.log(presentStudents);
 
   const presentNames = new Set(
-    ocrAttendance.map((student) => normalizeName(student.name)),
+    presentStudents.map((student) => normalizeName(student.name)),
   );
 
   //students in masterlist gets either present or absent
-  masterList.forEach((student) => {
-    const studentName = normalizeName(student.name);
-    const isPresent = presentNames.has(studentName);
+  masterlistStudents.forEach((student) => {
+    const normalizedStudentName = normalizeName(student.name);
+    const isPresent = presentNames.has(normalizedStudentName);
     const row = document.createElement("tr");
-    const sectionCell = document.createElement("td");
     const nameCell = document.createElement("td");
     const statusCell = document.createElement("td");
 
-    sectionCell.textContent = student.sectionCode || "N/A";
     nameCell.textContent = student.name;
     statusCell.textContent = isPresent ? "Present" : "Absent";
-    row.append(sectionCell, nameCell, statusCell);
+    row.append(nameCell, statusCell);
     combinedAttendanceTable.appendChild(row);
   });
 }
 
-socket.addEventListener("close", () => console.log("Client's disconnected"));
+async function exportAttendanceSpreadsheet() {
+  try {
+    const masterlistFile = masterlistFileInput.files[0];
+    const fileArrayBuffer = await masterlistFile.arrayBuffer();
+    const workbook = read(fileArrayBuffer);
+    const firstWorksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const presentStudents = getPresentStudents() || [];
+
+    const presentNames = new Set(
+      presentStudents.map((student) => normalizeName(student.name)),
+    );
+
+    const sheetRows = utils.sheet_to_json(firstWorksheet, {
+      //To-Do: Make This Into Object Instead Of A List Of Array.
+      header: 1,
+    });
+
+    console.log(sheetRows);
+
+    for (let rowIndex = 10; rowIndex < sheetRows.length; rowIndex++) {
+      const sheetRow = sheetRows[rowIndex];
+
+      if (!sheetRow || sheetRow.length <= 1) {
+        continue;
+      }
+
+      const rawStudentName = sheetRow[2];
+      const isPresent = presentNames.has(normalizeName(rawStudentName));
+
+      if (isPresent === false) {
+        sheetRow.push("Absent");
+      } else {
+        sheetRow.push("Present");
+      }
+    }
+
+    console.log(sheetRows);
+    //To-Do: Instead Of Array Of An Array, Use Json to sheet
+    const attendanceSheet = utils.aoa_to_sheet(sheetRows);
+    const attendanceWorkbook = utils.book_new();
+    utils.book_append_sheet(attendanceWorkbook, attendanceSheet, "Sheet1");
+    writeFile(attendanceWorkbook, "SheetJSTable.xls");
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+attendanceSocket.addEventListener("close", () =>
+  console.log("Teacher's Dashboard disconnected"),
+);
