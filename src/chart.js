@@ -1,10 +1,10 @@
 import Chart from "chart.js/auto";
 
 // Chart.js line chart
-const lineCtx = document.getElementById("lineChart")?.getContext("2d");
+const lineChartContext = document.getElementById("lineChart")?.getContext("2d");
 Chart.defaults.font.size = 20;
-if (lineCtx) {
-  new Chart(lineCtx, {
+if (lineChartContext) {
+  new Chart(lineChartContext, {
     type: "line",
     data: {
       labels: ["M", "T", "W", "T", "F"],
@@ -18,9 +18,9 @@ if (lineCtx) {
 }
 
 // Chart.js bar chart
-const barCtx = document.getElementById("barChart")?.getContext("2d");
-if (barCtx) {
-  new Chart(barCtx, {
+const barChartContext = document.getElementById("barChart")?.getContext("2d");
+if (barChartContext) {
+  new Chart(barChartContext, {
     type: "bar",
     data: {
       labels: ["A", "B", "C"],

@@ -1,5 +1,5 @@
 // main.js
-import "./chart.js";
+// import "./chart.js";
 import "./Ocr-Folder/processImage.js";
 import "./Compiler-Folder/studentRegister.js";
 import "./Compiler-Folder/validation.js";
@@ -17,9 +17,9 @@ const setMobileMenuOpen = (isOpen) => {
   mobileMenuToggle.setAttribute("aria-expanded", String(isOpen));
 };
 
-navigationButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const targetViewId = btn.getAttribute("data-target");
+navigationButtons.forEach((navigationButton) => {
+  navigationButton.addEventListener("click", () => {
+    const targetViewId = navigationButton.getAttribute("data-target");
     applicationViews.forEach((view) => (view.style.display = "none"));
     document.getElementById(targetViewId).style.display = "block";
     setMobileMenuOpen(false);
