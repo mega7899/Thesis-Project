@@ -16,14 +16,10 @@ function median(values) {
   return sortedValues[middleIndex];
 }
 
-
 function getCenterY(label) {
-  return (
-    label.bbox.y0 +
-    label.bbox.y1
-  ) / 2;
+  // Use the top coordinate because OCR may produce an abnormally large bounding box height.
+  return label.bbox.y0;
 }
-
 
 function clusterIntoRows(labels) {
   if (!labels.length) {
@@ -121,12 +117,16 @@ export function buildParticipantRegions(
     return [];
   }
 
+  const typicalLabelHeight = median(
+    labels
+      .map(label => label.bbox.y1 - label.bbox.y0)
+      .filter(height => height > 0)
+  );
+
 
   const rows =
     clusterIntoRows(labels);
 
-
-  
    //estimate participant height from vertical distance between Zoom labels.
   const rowGaps = [];
 
@@ -149,8 +149,6 @@ export function buildParticipantRegions(
       ? median(rowGaps)
       : imageHeight;
 
-
-  
     //the row containing the most recognized students gives the best estimate of the Zoom column layout.
   const referenceRow =
     [...rows].sort(
@@ -233,20 +231,12 @@ export function buildParticipantRegions(
 
     }
 
-
-    const labelTextHeight =
-      label.bbox.y1 -
-      label.bbox.y0;
-
-    const tileBottom =
-      Math.min(
-        imageHeight,
-        label.bbox.y1 +
-          Math.max(
-            6,
-            labelTextHeight * 0.8
-          )
-      );
+    const tileBottom = Math.min(
+      imageHeight,
+      label.bbox.y0 +
+        typicalLabelHeight +
+        Math.max(6, typicalLabelHeight * 0.35)
+    );
 
 
     const sourceX =
