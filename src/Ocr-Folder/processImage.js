@@ -269,7 +269,7 @@ function matchCandidateLabelsToStudents(labels) {
       const normalizedStudentName = normalizeName(student.name);
 
       const normalizedSectionAndName = normalizeName(
-        `${student.sectionCode} ${student.name}`,
+        `${student.name}`,
       );
 
       const nameScore = partial_ratio(
