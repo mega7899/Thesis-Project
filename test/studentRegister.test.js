@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, test, expect } from 'vitest';
-import { getMasterlistData } from '../src/studentRegister';
+import { getMasterlistData } from '../src/Compiler-Folder/studentRegister.js';
 
 describe('Return an Array of Object With Student Name', ()=>{
     const value = getMasterlistData();

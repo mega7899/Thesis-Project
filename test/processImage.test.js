@@ -1,22 +1,20 @@
 // @vitest-environment happy-dom
 import { describe, test, expect } from 'vitest';
-import { catchStudenName, testingMaterials } from '../src/processImage.js';
+import {
+  getPresentStudents,
+  getOcrRawText
+} from '../src/Ocr-Folder/processImage.js';
 
-describe('processImage.js Unit Tests', () => {  
-  test('catchStudenName returns an array data structure', () => {
-    const studentCount = catchStudenName();
-    expect(Array.isArray(studentCount)).toBe(true);
+describe('processImage.js initial state', () => {
+  test('Attendance data is stored in an array', () => {
+    expect(Array.isArray(getPresentStudents())).toBe(true);
   });
 
-  test('testingMaterials holds and returns the OCR string data', () => {
-    const materialCall = testingMaterials();
-    // Initially undefined before OCR runs, but validates it is designed to store/return string data
-    expect(materialCall === undefined || typeof materialCall === 'string').toBe(true);
+  test('Attendance starts empty', () => {
+    expect(getPresentStudents()).toEqual([]);
   });
 
-  test('catchStudenName initially holds an empty student count list', () => {
-    const studentCount = catchStudenName();
-    expect(studentCount).toHaveLength(0);
-    expect(studentCount).toEqual([]);
+  test('OCR text is initially undefined', () => {
+    expect(getOcrRawText()).toBeUndefined();
   });
 });
