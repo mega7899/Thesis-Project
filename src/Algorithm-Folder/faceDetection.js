@@ -133,132 +133,39 @@ export async function detectFacesInRegions(
     });
 
 
-  const cropCanvas =
-    document.createElement("canvas");
-
-  const cropContext =
-    cropCanvas.getContext("2d");
-
+  // Detect on the original screenshot once. Cropping each tile first made the
+  // inferred regions too sensitive to OCR grouping and often cut faces off.
+  const fullImageFaces = await faceapi.detectAllFaces(
+    imageSource,
+    detectorOptions,
+  );
 
   const regionResults = [];
 
-
   for (const region of participantRegions) {
+    const regionFaces = fullImageFaces.filter((face) => {
+      const box = face.box;
+      const faceCenterX = box.x + box.width / 2;
+      const faceCenterY = box.y + box.height / 2;
+      const regionRight = region.sourceX + region.width;
+      const regionBottom = region.sourceY + region.height;
 
-    
-     //shrink the participant region.
-    const horizontalPadding =
-      region.width * 0.08;
-
-    const topPadding =
-      region.height * 0.05;
-
-    
-     //remove more space from the bottom where name label is placed.
-    const bottomPadding =
-      region.height * 0.18;
-
-
-    const cropX =
-      region.sourceX +
-      horizontalPadding;
-
-    const cropY =
-      region.sourceY +
-      topPadding;
-
-
-    const cropWidth =
-      region.width -
-      (horizontalPadding * 2);
-
-    const cropHeight =
-      region.height -
-      topPadding -
-      bottomPadding;
-
-
-     //prevent invalid canvas sizes.
-    if (
-      cropWidth <= 0 ||
-      cropHeight <= 0
-    ) {
-
-      regionResults.push({
-        ...region,
-
-        faceCount: 0,
-        hasFace: false
-      });
-
-      continue;
-    }
-
-
-    cropCanvas.width =
-      Math.max(
-        1,
-        Math.round(cropWidth)
+      return (
+        faceCenterX >= region.sourceX &&
+        faceCenterX <= regionRight &&
+        faceCenterY >= region.sourceY &&
+        faceCenterY <= regionBottom
       );
-
-    cropCanvas.height =
-      Math.max(
-        1,
-        Math.round(cropHeight)
-      );
-
-
-    cropContext.clearRect(
-      0,
-      0,
-      cropCanvas.width,
-      cropCanvas.height
-    );
-
-
-    cropContext.drawImage(
-      imageSource,
-
-      cropX,
-      cropY,
-      cropWidth,
-      cropHeight,
-
-      0,
-      0,
-      cropCanvas.width,
-      cropCanvas.height
-    );
-
-
-    const detectedFaces =
-      await faceapi.detectAllFaces(
-        cropCanvas,
-        detectorOptions
-      );
-
+    });
 
     regionResults.push({
       ...region,
-
-      faceCount:
-        detectedFaces.length,
-
-      hasFace:
-        detectedFaces.length > 0,
-
-       //temporary for debugging, use for checking if participant crop is correct.
-      detectionX:
-        cropX,
-
-      detectionY:
-        cropY,
-
-      detectionWidth:
-        cropWidth,
-
-      detectionHeight:
-        cropHeight
+      faceCount: regionFaces.length,
+      hasFace: regionFaces.length > 0,
+      detectionX: region.sourceX,
+      detectionY: region.sourceY,
+      detectionWidth: region.width,
+      detectionHeight: region.height,
     });
 
   }
