@@ -144,41 +144,47 @@ function normalizeName(name) {
     .trim();
 }
 
+function nameVariants(name) {
+  const normalized = normalizeName(name);
+  const parts = normalized.split(" ").filter(Boolean);
+  const variants = [normalized];
+
+  // The roster uses "LAST, FIRST" while Zoom may show "FIRST LAST".
+  if (parts.length > 1) {
+    variants.push([...parts.slice(1), parts[0]].join(" "));
+  }
+
+  return [...new Set(variants)];
+}
+
+function scoreName(labelText, studentName) {
+  const label = normalizeName(labelText);
+  return Math.max(
+    ...nameVariants(studentName).map((variant) => partial_ratio(label, variant)),
+  );
+}
+
 // STEP 4: Match each label to a student in the masterlist.
 export function matchCandidateLabelsToStudents(labels) {
   const masterlist = getMasterlistData();
   const matchCandidates = [];
 
-  // Compare every label against every student and score how similar they are
+  // Compare every label against every student. Matching is deliberately
+  // independent of face detection: face detection decides camera state later.
   labels.forEach((label, labelIndex) => {
     const normalizedLabelText = normalizeName(label.text);
-
-    // Too short to be a real name, skip it
     if (normalizedLabelText.length < 3) return;
 
     masterlist.forEach((student, studentIndex) => {
-      const normalizedStudentName = normalizeName(student.name);
+      const bestScore = scoreName(normalizedLabelText, student.name);
 
-      const normalizedSectionAndName = normalizeName(`${student.name}`);
-
-      // Fuzzy score from 0 to 100 (100 = identical), forgiving of OCR typos
-      const nameScore = partial_ratio(
-        normalizedLabelText,
-        normalizedStudentName,
-      );
-      const sectionAndNameScore = partial_ratio(
-        normalizedLabelText,
-        normalizedSectionAndName,
-      );
-      const bestScore = Math.max(nameScore, sectionAndNameScore);
-
-      // Only keep pairs that are at least 60% similar
-      if (bestScore >= 60) {
+      // 55 allows common OCR errors, but the best unique match still wins.
+      if (bestScore >= 55) {
         matchCandidates.push({
-          labelIndex: labelIndex,
-          studentIndex: studentIndex,
-          label: label,
-          student: student,
+          labelIndex,
+          studentIndex,
+          label,
+          student,
           score: bestScore,
         });
       }

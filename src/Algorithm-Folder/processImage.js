@@ -112,11 +112,15 @@ async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage) {
     presentStudents.length = 0;
 
     participantFaceResults.forEach((participant) => {
+      // A matched name identifies the tile; a detected face confirms the
+      // camera is on. No face means absent, including camera-off tiles.
       if (!participant.hasFace) return;
 
       presentStudents.push({
         name: participant.name,
         score: participant.matchScore,
+        status: "Present",
+        cameraOn: true,
       });
     });
 

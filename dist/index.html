@@ -3,14 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Attendance Monitoring System</title>
     <link rel="shortcut icon" href="/icons.svg" type="image/x-icon" />
-    <script type="module" crossorigin src="/assets/index-Dw5NqOH0.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DjvZGa_E.css">
+
+    <title>Attendance Monitoring System</title>
+    <script type="module" crossorigin src="/assets/index-CWqtXOHw.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-FVpg6ww1.css">
   </head>
   <body>
     <div class="sidebar">
-      <button class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="category-menu" aria-label="Open teacher menu">
+      <button
+        class="mobile-menu-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="category-menu"
+        aria-label="Open teacher menu"
+      >
         <span aria-hidden="true"></span>
         <span aria-hidden="true"></span>
         <span aria-hidden="true"></span>
@@ -19,15 +26,15 @@
         <h3>Teacher Menu</h3>
         <hr />
         <ul>
-        <li>
-          <button class="menu-btn" data-target="dashboard">Dashboard</button>
-        </li>
-        <li>
-          <button class="menu-btn" data-target="upload">Upload files</button>
-        </li>
-        <li>
-          <button class="menu-btn" data-target="logs">Attendance Logs</button>
-        </li>
+          <li>
+            <button class="menu-btn" data-target="dashboard">Dashboard</button>
+          </li>
+          <li>
+            <button class="menu-btn" data-target="upload">Upload files</button>
+          </li>
+          <li>
+            <button class="menu-btn" data-target="logs">Attendance Logs</button>
+          </li>
         </ul>
         <hr />
         <button class="logout-btn">Logout</button>
@@ -41,7 +48,10 @@
         <div class="stats-box">
           <b>Total Students:</b> 6969 | <b>Avg. Attendees:</b> 6969
         </div>
-        <section class="reminderStep dashboard-guide" aria-labelledby="dashboard-guide-title">
+        <section
+          class="reminderStep dashboard-guide"
+          aria-labelledby="dashboard-guide-title"
+        >
           <h2 id="dashboard-guide-title">Quick start guide</h2>
           <ol>
             <li>Add the masterlist spreadsheet first.</li>
@@ -63,20 +73,21 @@
       <section id="upload" class="view" style="display: none">
         <form class="uploadMasterList">
           <h1>Upload MasterList</h1>
-          <input type="file" id="masterList" accept=".xlsx" />
+          <input type="file" id="masterList" accept=".xls" />
           <br />
           <button class="send" id="send-btn" type="button">Submit</button>
         </form>
 
-        <br>
+        <br />
 
-        <form class="uploadZoomScreenshot" >
+        <form class="uploadZoomScreenshot">
           <h1>Upload Zoom ScreenShots</h1>
           <input type="file" id="screenShots" accept="image/*" />
           <br />
-          <button class="send" id="send-screenShots" type="button">Submit</button>
+          <button class="send" id="send-screenShots" type="button">
+            Submit
+          </button>
         </form>
-
       </section>
 
       <section id="logs" class="view" style="display: none">
@@ -86,39 +97,35 @@
           <h3>Masterlist</h3>
           <table>
             <tr>
-              <th>Section</th>
               <th>Name</th>
             </tr>
-            <tr id="masterData"></tr>
+            <tbody id="masterData"></tbody>
           </table>
-        <section >
+          <section>
+            <table id="currentAttendance">
+              <h3>Current Attendance</h3>
+              <tr>
+                <th>Name</th>
+                <th>Attendance</th>
+              </tr>
+              <tbody id="studentData"></tbody>
+            </table>
 
+            <h3>Combine Masterlist</h3>
+            <table id="combineData">
+              <tr>
+                <th>Name</th>
+                <th>Attendance</th>
+              </tr>
+              <tbody id="combineSheetData"></tbody>
+            </table>
+          </section>
 
-        <table id="currentAttendance">
-          <h3>Current Attendance</h3>
-          <tr>
-            <th>Section</th>
-            <th>Name</th>
-            <th>Present</th>
-          </tr>
-          <tr id="studentData"></tr>
-        </table>
-          
-        <h3>Combine Masterlist</h3>
-          <table id="combineData">
-            <tr>
-              <th>Section</th>
-              <th>Name</th>
-              <th>Present</th>
-            </tr>
-            <tr id="combineSheetData"></tr>
-          </table>
-        </section>
-
-        <nav class="submitionBtn">
-          <button id="combineTable">Combine Table</button>
-          <button id="exportTable">Export Table</button>
-        </nav>
+          <nav class="submitionBtn">
+            <button id="combineTable">Make Attendance</button>
+            <button id="shareAttendance">Publish Attendance</button>
+            <button id="exportTable">Export Table</button>
+          </nav>
         </div>
       </section>
 

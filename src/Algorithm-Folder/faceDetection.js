@@ -120,13 +120,16 @@ export async function detectFacesInRegions(
   participantRegions
 ) {
 
+
   await loadFaceDetectionModel();
 
 
+  // Use a larger detector input and a modest threshold because Zoom tiles
+  // often contain small, dim faces. A camera-off tile still produces zero faces.
   const detectorOptions =
     new faceapi.TinyFaceDetectorOptions({
-      inputSize: 320,
-      scoreThreshold: 0.25
+      inputSize: 416,
+      scoreThreshold: 0.2
     });
 
 
