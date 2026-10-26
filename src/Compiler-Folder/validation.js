@@ -1,5 +1,5 @@
-import { getMasterlistData } from "./studentRegister";
-import { getPresentStudents } from "../Ocr-Folder/processImage";
+import { getMasterlistData } from "../Algorithm-Folder/studentRegister";
+import { getPresentStudents } from "../Algorithm-Folder/processImage";
 import { utils, writeFile, read } from "xlsx";
 
 const combineTableBtn = document.getElementById("combineTable");
