@@ -1,7 +1,7 @@
 // main.js
 // import "./chart.js";
-import "./Ocr-Folder/processImage.js";
-import "./Compiler-Folder/studentRegister.js";
+import "./Algorithm-Folder/processImage.js";
+import "./Algorithm-Folder/studentRegister.js";
 import "./Compiler-Folder/validation.js";
 
 // INTERACTABILITY
