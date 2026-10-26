@@ -196,42 +196,48 @@ export function buildParticipantRegions(
     );
 
 
+  // Zoom centers a partially filled last row, so its tiles sit at the reference
+  // columns shifted by a multiple of half a tile width. For each row, pick the
+  // shift that best lines its labels up with the reference columns.
+  const maxColumns = referenceLabels.length;
+  const candidateShifts = [];
+  for (let k = 0; k < Math.max(1, maxColumns); k++) {
+    candidateShifts.push(k * estimatedTileWidth / 2);
+  }
+
+  const snappedXByLabel = new Map();
+
+  rows.forEach(row => {
+    let bestShift = 0;
+    let bestError = Infinity;
+
+    candidateShifts.forEach(shift => {
+      const shiftedAnchors = columnAnchors.map(a => a + shift);
+      const totalError = row.labels.reduce((sum, label) => {
+        return sum + Math.min(
+          ...shiftedAnchors.map(a => Math.abs(a - label.bbox.x0))
+        );
+      }, 0);
+      if (totalError < bestError) {
+        bestError = totalError;
+        bestShift = shift;
+      }
+    });
+
+    const shiftedAnchors = columnAnchors.map(a => a + bestShift);
+    // anchors that run past the right edge are not real tiles
+    row.labels.forEach(label => {
+      const closest = shiftedAnchors.reduce((c, a) =>
+        Math.abs(a - label.bbox.x0) < Math.abs(c - label.bbox.x0) ? a : c,
+        shiftedAnchors[0]);
+      snappedXByLabel.set(label, closest);
+    });
+  });
+
   return labels.map(label => {
 
-    // find which inferred column is closest to this name label.
-    let closestColumnX =
-      label.bbox.x0;
-
-
-    if (columnAnchors.length) {
-
-      closestColumnX =
-        columnAnchors.reduce(
-          (closest, anchor) => {
-
-            const anchorDifference =
-              Math.abs(
-                anchor -
-                label.bbox.x0
-              );
-
-            const closestDifference =
-              Math.abs(
-                closest -
-                label.bbox.x0
-              );
-
-
-            return anchorDifference <
-              closestDifference
-              ? anchor
-              : closest;
-
-          },
-          columnAnchors[0]
-        );
-
-    }
+    const closestColumnX =
+      snappedXByLabel.get(label) ?? label.bbox.x0;
 
 
     const labelTextHeight =
