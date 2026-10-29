@@ -5,8 +5,7 @@ import { partial_ratio } from "fuzzball";
 
 //Import The Extracted Student Name, and Student Name That Came From Ocr
 import { getMasterlistData } from "../Compiler-Folder/studentRegister.js";
-import { detectFacesInRegions } from "../Face-Recognition-Folder/faceDetection.js";
-import { buildParticipantRegions } from "../Face-Recognition-Folder/layoutDetection.js";
+import { detectAndMatchFaces } from "../Face-Recognition-Folder/faceDetectionPipeline.js";
 
 // DOM
 const masterlistFileInput = document.getElementById("masterList");
@@ -15,7 +14,9 @@ const submitScreenshotBtn = document.getElementById("send-screenShots");
 
 // Shared state
 const presentStudents = [];
+let faceReviewResults = [];
 let ocrRawText;
+let latestScreenshotId = 0;
 
 // Screenshot upload
 if (submitScreenshotBtn) {
@@ -33,17 +34,17 @@ if (submitScreenshotBtn) {
 
 // Load screenshot
 function prepareImageOnCanvas(fileInputElement) {
+  const screenshotId = ++latestScreenshotId;
   const imageFile = fileInputElement.files[0];
   const fileReader = new FileReader();
   const processingCanvas = document.createElement("canvas");
   const canvasContext = processingCanvas.getContext("2d");
   const imageElement = document.createElement("img");
-  fileReader.readAsDataURL(imageFile);
-
   fileReader.onload = () => {
-    imageElement.src = fileReader.result;
+    if (screenshotId !== latestScreenshotId) return;
 
     imageElement.onload = async () => {
+      if (screenshotId !== latestScreenshotId) return;
       //keep the original screenshot in memory for face-api and OCR processing.
       processingCanvas.width = imageElement.naturalWidth;
       processingCanvas.height = imageElement.naturalHeight;
@@ -57,17 +58,21 @@ function prepareImageOnCanvas(fileInputElement) {
 
       const invertFilter = new InvertFilter(processingCanvas);
       invertFilter.process(imageElement);
-      await runOcrAndFaceDetection(processingCanvas, imageElement);
+      await runOcrAndFaceDetection(processingCanvas, imageElement, screenshotId);
     };
+    imageElement.src = fileReader.result;
   };
+  fileReader.readAsDataURL(imageFile);
 }
 
 // Main OCR + face pipeline
-async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage) {
+async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage, screenshotId) {
   console.log("OCR processing started.");
-  const ocrWorker = await createWorker("eng");
+  let ocrWorker;
 
   try {
+    ocrWorker = await createWorker("eng");
+    if (screenshotId !== latestScreenshotId) return;
     const ocrResult = await ocrWorker.recognize(
       screenshotCanvas,
       {},
@@ -75,8 +80,9 @@ async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage) {
         blocks: true,
       },
     );
+    if (screenshotId !== latestScreenshotId) return;
 
-    ocrRawText = ocrResult.data.text;
+    const nextOcrRawText = ocrResult.data.text;
     const ocrBlocks = ocrResult.data.blocks || [];
 
     // extract OCR words and arrange candidate Zoom name labels
@@ -85,45 +91,63 @@ async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage) {
     // match Zoom labels to official students
     const matchedLabels = matchCandidateLabelsToStudents(candidateLabels);
 
-    //for debugging purposes, if nothing match it won't continue
     if (!matchedLabels.length) {
       console.warn("No Zoom participant names matched the masterlist.");
+      ocrRawText = nextOcrRawText;
       presentStudents.length = 0;
+      faceReviewResults = getMasterlistData().map(student => ({
+        name: student.name,
+        matchStatus: "unmatched",
+        reason: "No OCR name matched this student; manual review required"
+      }));
       renderCurrentAttendanceTable(presentStudents);
       return;
     }
 
-    // finalize zoom participant regions dynamically
-    const participantRegions = buildParticipantRegions(
-      matchedLabels,
-      screenshotImage.naturalWidth,
-      screenshotImage.naturalHeight,
-    );
+    const faceAnalysis = await detectAndMatchFaces(screenshotImage, matchedLabels);
+    if (screenshotId !== latestScreenshotId) return;
+    const matchedNames = new Set(matchedLabels.map(label => label.name));
+    const nextFaceReviewResults = [
+      ...faceAnalysis.needsReview,
+      ...getMasterlistData().filter(student => !matchedNames.has(student.name)).map(student => ({
+        name: student.name,
+        matchStatus: "unmatched",
+        reason: "No OCR name matched this student; manual review required"
+      }))
+    ];
 
-    // run face-api on each participant
-    const participantFaceResults = await detectFacesInRegions(
-      screenshotImage,
-      participantRegions,
-    );
-
-    //Current Attendance
+    // Preserve the existing attendance contract; uncertain results stay in review.
+    if (screenshotId !== latestScreenshotId) return;
+    ocrRawText = nextOcrRawText;
+    faceReviewResults = nextFaceReviewResults;
     presentStudents.length = 0;
-
-    participantFaceResults.forEach((participant) => {
-      if (!participant.hasFace) return;
-
-      presentStudents.push({
-        name: participant.name,
-        score: participant.matchScore,
-      });
+    faceAnalysis.results.forEach((result) => {
+      if (!result.faceDetected || result.matchStatus !== "matched") return;
+      presentStudents.push({ name: result.name, score: result.matchScore });
     });
 
     renderCurrentAttendanceTable(presentStudents);
     console.log("Current attendance:", presentStudents);
   } catch (error) {
+    if (screenshotId !== latestScreenshotId) return;
     console.error("Failed to process Zoom screenshot:", error);
+    // A failed new analysis must not leave the previous screenshot marked Present.
+    presentStudents.length = 0;
+    ocrRawText = undefined;
+    faceReviewResults = getMasterlistData().map(student => ({
+      name: student.name,
+      matchStatus: "unmatched",
+      reason: "Screenshot processing failed; manual review required"
+    }));
+    renderCurrentAttendanceTable(presentStudents);
   } finally {
-    await ocrWorker.terminate();
+    if (ocrWorker) {
+      try {
+        await ocrWorker.terminate();
+      } catch (error) {
+        console.warn("Failed to terminate OCR worker:", error);
+      }
+    }
 
     console.log("OCR processing finished.");
   }
@@ -348,6 +372,10 @@ export function renderCurrentAttendanceTable(presentStudentList) {
 // Existing exports used by validation/tests
 export function getPresentStudents() {
   return presentStudents;
+}
+
+export function getFaceReviewResults() {
+  return faceReviewResults;
 }
 
 export function getOcrRawText() {
