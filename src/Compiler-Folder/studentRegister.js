@@ -1,6 +1,5 @@
 import { utils, writeFileXLSX, read, writeFile } from "xlsx";
 
-const screenshotFileInput = document.getElementById("screenShots");
 const masterlistFileInput = document.getElementById("masterList");
 const submitMasterlistBtn = document.getElementById("send-btn");
 const masterlistTableBody = document.getElementById("masterData");
@@ -10,8 +9,6 @@ let parsedMasterlist = [];
 if (submitMasterlistBtn) {
   submitMasterlistBtn.addEventListener("click", () => {
     console.log("The button has been clicked!");
-
-    if (!screenshotFileInput.files[0]) return console.warn("Submit your zoom screenShot.");
 
     processMasterlistWorkbook();
   });
