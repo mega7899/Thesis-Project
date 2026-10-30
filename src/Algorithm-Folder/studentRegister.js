@@ -49,7 +49,7 @@ async function processMasterlistWorkbook() {
         });
       }
     });
-     renderStudentList();
+    renderStudentList();
   } catch (error) {
     console.error("Failed to process masterlist workbook:", error);
   }

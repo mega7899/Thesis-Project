@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import {
   getPresentStudents,
   getOcrRawText
-} from '../src/Ocr-Folder/processImage.js';
+} from '../src/Algorithm-Folder/processImage.js';
 
 describe('processImage.js initial state', () => {
   test('Attendance data is stored in an array', () => {
