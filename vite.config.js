@@ -1,4 +1,6 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
+import { fileURLToPath } from "node:url";
+import { createAttendanceHandler } from "./server/attendanceApi.js";
 import { WebSocketServer } from "ws";
 
 /* A tiny Vite plugin starts a WebSocket server,
@@ -51,6 +53,24 @@ function websocketPlugin() {
   };
 }
 
-export default defineConfig({
-  plugins: [websocketPlugin()],
+export default defineConfig(({ mode }) => {
+  // Only this server-side closure reads private variables; never use define or VITE_* for secrets.
+  const config = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
+  const handler = createAttendanceHandler(() => config);
+  const attendanceApi = {
+    name: 'attendance-history-api',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] === '/api/attendance') return handler(req, res);
+        next();
+      });
+    },
+  };
+  return {
+    plugins: [websocketPlugin(), attendanceApi],
+    build: { rolldownOptions: { input: {
+      teacher: fileURLToPath(new URL('./index.html', import.meta.url)),
+      student: fileURLToPath(new URL('./student-portal.html', import.meta.url)),
+    } } },
+  };
 });

@@ -1,5 +1,6 @@
 import { getMasterlistData } from "../Algorithm-Folder/studentRegister";
-import { getPresentStudents } from "../Algorithm-Folder/processImage";
+import { getPresentStudents, isAttendanceReady } from "../Algorithm-Folder/processImage";
+import { initializePublishing } from "../Database-Folder/publishedAttendance.js";
 import { utils, writeFile, read } from "xlsx";
 
 const combineTableBtn = document.getElementById("combineTable");
@@ -25,7 +26,11 @@ exportExcelBtn?.addEventListener("click", () => {
   exportAttendanceSpreadsheet();
 });
 
+const { preparePublication, savePublishedAttendance } = initializePublishing();
+
 shareAttendanceBtn.addEventListener("click", () => {
+  const publication = preparePublication();
+  if (!publication) return;
   const masterlistStudents = getMasterlistData() || [];
   const presentStudents = getPresentStudents() || [];
 
@@ -34,12 +39,20 @@ shareAttendanceBtn.addEventListener("click", () => {
       const attendancePayload = {
         masterlist: masterlistStudents,
         ocrAttendance: presentStudents,
+        attendanceDate: publication.date,
       };
 
       attendanceSocket.send(JSON.stringify(attendancePayload));
     }
   }
   sendAttendanceToServer();
+  // Preserve live publishing independently of the protected history request.
+  const presentNames = new Set(presentStudents.map(student => normalizeName(student.name)));
+  const records = masterlistStudents.map(student => ({
+    student_name: student.name,
+    status: presentNames.has(normalizeName(student.name)) ? "Present" : "Absent",
+  }));
+  void savePublishedAttendance(records, isAttendanceReady(), publication);
 });
 
 function normalizeName(name) {

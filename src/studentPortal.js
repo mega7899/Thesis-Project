@@ -1,3 +1,5 @@
+import { initializeStudentHistory } from "./Database-Folder/studentHistory.js";
+
 //Dom Id
 const attendanceToday = document.getElementById("attendance-today");
 const attendanceHistory = document.getElementById("attendance-history");
@@ -40,7 +42,10 @@ function renderAttendance(attendanceData) {
     presentStudents.map((presentStudent) => normalizeName(presentStudent.name)),
   );
 
-  const today = new Date().toLocaleDateString();
+  // Attendance dates are calendar strings, not timestamps to convert between timezones.
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(attendanceData.attendanceDate || "")
+    ? attendanceData.attendanceDate
+    : new Date().toLocaleDateString();
 
   attendanceToday.replaceChildren();
 
@@ -68,3 +73,5 @@ function normalizeName(name) {
 attendanceSocket.addEventListener("close", () =>
   console.log("Student's DashBoard disconnected"),
 );
+
+initializeStudentHistory();
