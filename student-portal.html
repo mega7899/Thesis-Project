@@ -30,9 +30,14 @@
       <section class="attendance-section">
         <h2>Attendance History</h2>
 
+        <label for="history-student">Student (demonstration filtering only)</label>
+        <select id="history-student"><option value="">Select a student</option></select>
+        <button id="history-refresh" type="button">Refresh History</button>
+        <p id="history-status" role="status"></p>
         <div class="attendance-history" id="attendance-history">
           <p>Previous attendance records will appear here.</p>
         </div>
+        <button id="history-more" type="button" hidden>Load More</button>
       </section>
     </main>
 

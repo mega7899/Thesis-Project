@@ -20,6 +20,9 @@ const presentStudents = [];
 let faceReviewResults = [];
 let ocrRawText;
 let latestScreenshotId = 0;
+let completedScreenshotId = 0;
+let submittedScreenshotFile;
+let completedMasterlist;
 
 // Screenshot upload
 if (submitScreenshotBtn) {
@@ -39,6 +42,7 @@ if (submitScreenshotBtn) {
 function prepareImageOnCanvas(fileInputElement) {
   const screenshotId = ++latestScreenshotId;
   const imageFile = fileInputElement.files[0];
+  submittedScreenshotFile = imageFile;
   const fileReader = new FileReader();
   const processingCanvas = document.createElement("canvas");
   const canvasContext = processingCanvas.getContext("2d");
@@ -92,6 +96,7 @@ async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage, screens
     const candidateLabels = extractCandidateLabels(ocrBlocks);
 
     // match Zoom labels to official students
+    const analysisMasterlist = getMasterlistData();
     const matchedLabels = matchCandidateLabelsToStudents(candidateLabels);
 
     if (!matchedLabels.length) {
@@ -130,6 +135,8 @@ async function runOcrAndFaceDetection(screenshotCanvas, screenshotImage, screens
     });
 
     renderCurrentAttendanceTable(presentStudents);
+    completedScreenshotId = screenshotId;
+    completedMasterlist = analysisMasterlist;
     console.log("Current attendance:", presentStudents);
   } catch (error) {
     if (screenshotId !== latestScreenshotId) return;
@@ -190,4 +197,11 @@ export function getFaceReviewResults() {
 
 export function getOcrRawText() {
   return ocrRawText;
+}
+
+// Saving history requires a completed analysis of these exact current inputs.
+export function isAttendanceReady() {
+  return completedScreenshotId > 0 && completedScreenshotId === latestScreenshotId
+    && submittedScreenshotFile === screenshotFileInput?.files[0]
+    && completedMasterlist === getMasterlistData();
 }

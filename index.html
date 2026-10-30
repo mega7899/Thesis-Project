@@ -120,6 +120,15 @@
             </table>
           </section>
 
+          <div>
+            <label for="attendance-date">Attendance date</label>
+            <input id="attendance-date" type="date" required />
+            <button id="attendance-new-session" type="button">New Session</button>
+            <p>History session: <span id="attendance-session"></span></p>
+            <label for="attendance-passphrase">Publishing passphrase (history saving only)</label>
+            <input id="attendance-passphrase" type="password" autocomplete="off" />
+            <p id="attendance-save-status" role="status"></p>
+          </div>
           <nav class="submitionBtn">
             <button id="combineTable">Make Attendance</button>
             <button id="shareAttendance">Publish Attendance</button>
